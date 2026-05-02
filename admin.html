@@ -56,7 +56,7 @@ body::before{
 /* 主容器 */
 .container{
   position:relative;z-index:1;
-  max-width:800px;margin:30px auto;padding:0 20px;
+  max-width:860px;margin:30px auto;padding:0 20px;
 }
 
 /* Token 配置区 */
@@ -140,7 +140,15 @@ body::before{
 .btn-edit:hover{background:#6d28d9;}
 .btn-del{background:#dc2626;}
 .btn-del:hover{background:#b91c1c;}
-.btn-del:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-del:disabled,.btn-edit:disabled{opacity:0.3;cursor:not-allowed;}
+
+/* 只读提示条 */
+.readonly-bar{
+  background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);
+  border-radius:10px;padding:10px 16px;margin-bottom:16px;
+  font-size:12px;color:#f59e0b;
+  display:flex;align-items:center;gap:8px;
+}
 
 /* 添加账号区 */
 .add-section{
@@ -168,6 +176,42 @@ body::before{
 }
 .add-btn:hover{background:linear-gradient(135deg,#047857,#059669);transform:translateY(-1px);}
 .add-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+
+/* 操作日志区 */
+.log-card{
+  background:linear-gradient(145deg, #0e1f35 0%, #0a1628 100%);
+  border:1px solid #1e3a60;border-radius:16px;
+  padding:24px;margin-top:24px;
+}
+.log-card h2{
+  font-size:16px;color:#f0c040;margin-bottom:16px;letter-spacing:1px;
+  display:flex;align-items:center;gap:8px;
+}
+.log-card h2 .count{
+  background:rgba(59,130,246,0.2);color:#60a5fa;
+  padding:2px 10px;border-radius:12px;font-size:11px;
+}
+.log-list{max-height:360px;overflow-y:auto;}
+.log-list::-webkit-scrollbar{width:4px;}
+.log-list::-webkit-scrollbar-thumb{background:#1e3a60;border-radius:4px;}
+.log-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 0;border-bottom:1px solid rgba(30,58,96,0.3);
+}
+.log-item:last-child{border-bottom:none;}
+.log-icon{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.log-icon.add{background:rgba(16,185,129,0.15);color:#6ee7b7;}
+.log-icon.del{background:rgba(239,68,68,0.15);color:#f87171;}
+.log-icon.pw{background:rgba(124,58,237,0.15);color:#a78bfa;}
+.log-body{flex:1;min-width:0;}
+.log-body .log-title{font-size:13px;color:#e0e6f0;margin-bottom:3px;}
+.log-body .log-title strong{color:#f0c040;}
+.log-body .log-time{font-size:11px;color:#5a7a9a;}
+.log-empty{text-align:center;padding:30px;color:#3a5a7a;font-size:13px;}
 
 /* 弹窗 */
 .modal-overlay{
@@ -213,6 +257,16 @@ body::before{
 }
 .hint .icon{font-size:40px;margin-bottom:12px;display:block;}
 
+/* 刷新按钮 */
+.refresh-btn{
+  padding:6px 14px;border:1px solid #1e3a60;border-radius:8px;
+  background:transparent;color:#7ca8d0;font-size:12px;cursor:pointer;
+  transition:all .2s;font-family:inherit;margin-left:auto;
+}
+.refresh-btn:hover{border-color:#3b82f6;color:#3b82f6;background:rgba(37,99,235,0.1);}
+.refresh-btn.spinning{animation:spin 1s linear infinite;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
 /* 响应式 */
 @media(max-width:600px){
   .add-grid{grid-template-columns:1fr;}
@@ -255,16 +309,18 @@ body::before{
 
   <!-- 账号管理 -->
   <div class="accounts-card">
-    <h2>👥 账号管理</h2>
+    <h2 style="display:flex;align-items:center;justify-content:space-between;">
+      <span>👥 当前账号列表</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">🔄 刷新</button>
+    </h2>
 
-    <!-- 未配置 Token 时的提示 -->
-    <div class="hint" id="noTokenHint">
-      <span class="icon">🔒</span>
-      请先配置 GitHub Token 才能管理账号
+    <!-- 只读提示 -->
+    <div class="readonly-bar" id="readonlyBar" style="display:none;">
+      ⚠️ 未配置 Token，当前为只读模式。请先配置 Token 才能添加/删除账号或修改密码。
     </div>
 
     <!-- 账号列表 -->
-    <div id="accountSection" style="display:none;">
+    <div id="accountSection">
       <table class="account-table">
         <thead>
           <tr>
@@ -274,11 +330,13 @@ body::before{
             <th>操作</th>
           </tr>
         </thead>
-        <tbody id="accountListBody"></tbody>
+        <tbody id="accountListBody">
+          <tr><td colspan="4" style="text-align:center;color:#5a7a9a;padding:20px;">加载中...</td></tr>
+        </tbody>
       </table>
 
       <!-- 添加新账号 -->
-      <div class="add-section">
+      <div class="add-section" id="addSection">
         <h3>➕ 添加新账号</h3>
         <div class="add-grid">
           <input id="newUser" placeholder="新账号名">
@@ -292,6 +350,15 @@ body::before{
       </div>
     </div>
   </div>
+
+  <!-- 操作日志 -->
+  <div class="log-card">
+    <h2>📋 操作记录 <span class="count" id="logCount">0</span></h2>
+    <div class="log-list" id="logList">
+      <div class="log-empty">暂无操作记录</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- 修改密码弹窗 -->
@@ -320,6 +387,9 @@ body::before{
 
 <script src="auth.js"></script>
 <script>
+// ===== 全局状态 =====
+let tokenReady = false;  // Token 是否有效
+
 // ===== 权限检查 =====
 (function checkAuth() {
   if (!Auth.isLoggedIn()) {
@@ -332,24 +402,43 @@ body::before{
     window.location.href = 'index.html';
     return;
   }
-  // 显示当前管理员
   document.getElementById('roleBadge').textContent = '管理员: ' + user.username;
 })();
 
-// ===== 页面加载后检查 Token =====
-checkTokenStatus();
+// ===== 页面加载 =====
+initPage();
+
+async function initPage() {
+  // 1. 先加载账号列表（无论有无 Token）
+  loadAccountList();
+  // 2. 加载操作日志
+  loadLog();
+  // 3. 检查 Token 状态
+  checkTokenStatus();
+}
+
+// ===== 刷新全部 =====
+function refreshAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  loadAccountList();
+  loadLog();
+  setTimeout(() => btn.classList.remove('spinning'), 1000);
+}
 
 // ===== Token 管理 =====
 async function checkTokenStatus() {
   const el = document.getElementById('tokenStatus');
-  const hint = document.getElementById('noTokenHint');
-  const section = document.getElementById('accountSection');
+  const readonlyBar = document.getElementById('readonlyBar');
+  const addSection = document.getElementById('addSection');
 
   if (!Auth.hasToken()) {
     el.className = 'token-status no';
-    el.textContent = '❌ 未配置 Token — 无法修改账号密码';
-    hint.style.display = 'block';
-    section.style.display = 'none';
+    el.textContent = '❌ 未配置 Token — 当前为只读模式';
+    tokenReady = false;
+    readonlyBar.style.display = 'flex';
+    addSection.style.display = 'none';
+    updateActionButtons();
     return;
   }
 
@@ -361,21 +450,34 @@ async function checkTokenStatus() {
     if (res.ok) {
       el.className = 'token-status ok';
       el.textContent = '✅ Token 有效 (GitHub 用户: ' + res.username + ')';
-      hint.style.display = 'none';
-      section.style.display = 'block';
-      loadAccountList();
+      tokenReady = true;
+      readonlyBar.style.display = 'none';
+      addSection.style.display = 'block';
+      updateActionButtons();
     } else {
       el.className = 'token-status no';
       el.textContent = '❌ Token 无效: ' + res.msg;
-      hint.style.display = 'block';
-      section.style.display = 'none';
+      tokenReady = false;
+      readonlyBar.style.display = 'flex';
+      addSection.style.display = 'none';
+      updateActionButtons();
     }
   } catch (e) {
     el.className = 'token-status no';
     el.textContent = '❌ 验证失败: ' + e.message;
-    hint.style.display = 'block';
-    section.style.display = 'none';
+    tokenReady = false;
+    readonlyBar.style.display = 'flex';
+    addSection.style.display = 'none';
+    updateActionButtons();
   }
+}
+
+// 更新所有操作按钮的可用状态
+function updateActionButtons() {
+  const editBtns = document.querySelectorAll('.btn-edit');
+  const delBtns = document.querySelectorAll('.btn-del:not([disabled])');
+  editBtns.forEach(b => b.disabled = !tokenReady);
+  delBtns.forEach(b => b.disabled = !tokenReady);
 }
 
 async function saveToken() {
@@ -389,34 +491,153 @@ async function saveToken() {
 function removeToken() {
   if (!confirm('确认清除 Token？清除后将无法修改账号密码。')) return;
   Auth.clearToken();
+  tokenReady = false;
   checkTokenStatus();
 }
 
-// ===== 账号列表 =====
+// ===== 账号列表（无论有无 Token 都显示） =====
 async function loadAccountList() {
   const tbody = document.getElementById('accountListBody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#5a7a9a;padding:20px;">加载中...</td></tr>';
 
   try {
-    const accounts = await Auth.listAccounts();
+    // 直接用 Auth.fetchAccounts() 获取（不需要 Token）
+    const accounts = await Auth.fetchAccounts();
     tbody.innerHTML = '';
+    if (accounts.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#5a7a9a;padding:20px;">暂无账号</td></tr>';
+      return;
+    }
     accounts.forEach(a => {
       const tr = document.createElement('tr');
       const isAdmin = a.username === 'admin';
       const isSelf = Auth.currentUser() && a.username === Auth.currentUser().username;
+      const canEdit = tokenReady;
       tr.innerHTML = `
         <td class="username">${a.username}${isSelf ? ' <span style="color:#5a7a9a;font-size:10px;">(当前)</span>' : ''}</td>
         <td><span class="role-tag ${a.role}">${a.role === 'admin' ? '管理员' : '普通用户'}</span></td>
         <td class="password">••••••</td>
         <td class="actions">
-          <button class="btn-edit" onclick="openPwModal('${a.username}')">修改密码</button>
-          <button class="btn-del" onclick="doDeleteAccount('${a.username}')" ${isAdmin ? 'disabled title="不能删除默认管理员"' : ''}>删除</button>
+          <button class="btn-edit" onclick="openPwModal('${a.username}')" ${canEdit ? '' : 'disabled title="请先配置 Token"'}>修改密码</button>
+          <button class="btn-del" onclick="doDeleteAccount('${a.username}')" ${isAdmin ? 'disabled title="不能删除默认管理员"' : (canEdit ? '' : 'disabled title="请先配置 Token"')}>删除</button>
         </td>
       `;
       tbody.appendChild(tr);
     });
   } catch (e) {
     tbody.innerHTML = '<tr><td colspan="4" style="color:#ef4444;text-align:center;padding:20px;">加载失败: ' + e.message + '</td></tr>';
+  }
+}
+
+// ===== 操作日志 =====
+const LOG_URL = 'https://luo282.github.io/zodiac-tool/operation_log.json';
+
+async function loadLog() {
+  const listEl = document.getElementById('logList');
+  const countEl = document.getElementById('logCount');
+  listEl.innerHTML = '<div class="log-empty">加载中...</div>';
+
+  try {
+    const url = LOG_URL + '?t=' + Date.now();
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      listEl.innerHTML = '<div class="log-empty">暂无操作记录</div>';
+      countEl.textContent = '0';
+      return;
+    }
+    const data = await resp.json();
+    const logs = data.logs || [];
+    countEl.textContent = logs.length;
+
+    if (logs.length === 0) {
+      listEl.innerHTML = '<div class="log-empty">暂无操作记录</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    // 倒序显示（最新的在前）
+    [...logs].reverse().forEach(log => {
+      const iconClass = log.type === 'add' ? 'add' : log.type === 'delete' ? 'del' : 'pw';
+      const iconEmoji = log.type === 'add' ? '➕' : log.type === 'delete' ? '🗑️' : '🔑';
+      const div = document.createElement('div');
+      div.className = 'log-item';
+      div.innerHTML = `
+        <div class="log-icon ${iconClass}">${iconEmoji}</div>
+        <div class="log-body">
+          <div class="log-title">${log.message}</div>
+          <div class="log-time">${log.time}</div>
+        </div>
+      `;
+      listEl.appendChild(div);
+    });
+  } catch (e) {
+    listEl.innerHTML = '<div class="log-empty">暂无操作记录</div>';
+    countEl.textContent = '0';
+  }
+}
+
+// 写入操作日志到 GitHub（需要 Token）
+async function appendLog(type, message) {
+  try {
+    const token = localStorage.getItem('zodiac_github_token');
+    if (!token) return;
+
+    const headers = {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'zodiac-auth/1.0',
+      'Content-Type': 'application/json'
+    };
+
+    // 获取当前文件 SHA
+    let sha = '';
+    let existingLogs = [];
+    try {
+      const getResp = await fetch('https://api.github.com/repos/luo282/zodiac-tool/contents/operation_log.json', { headers });
+      if (getResp.ok) {
+        const getData = await getResp.json();
+        sha = getData.sha;
+        const content = decodeURIComponent(escape(atob(getData.content.replace(/\n/g, ''))));
+        const parsed = JSON.parse(content);
+        existingLogs = parsed.logs || [];
+      }
+    } catch (e) {
+      // 文件不存在，第一次创建
+    }
+
+    const now = new Date();
+    const timeStr = now.getFullYear() + '-' +
+      String(now.getMonth()+1).padStart(2,'0') + '-' +
+      String(now.getDate()).padStart(2,'0') + ' ' +
+      String(now.getHours()).padStart(2,'0') + ':' +
+      String(now.getMinutes()).padStart(2,'0') + ':' +
+      String(now.getSeconds()).padStart(2,'0');
+
+    existingLogs.push({ type, message, time: timeStr });
+
+    // 最多保留 100 条记录
+    if (existingLogs.length > 100) {
+      existingLogs = existingLogs.slice(-100);
+    }
+
+    const newContent = btoa(unescape(encodeURIComponent(
+      JSON.stringify({ logs: existingLogs }, null, 2)
+    )));
+
+    const body = {
+      message: '操作日志: ' + message,
+      content: newContent
+    };
+    if (sha) body.sha = sha;
+
+    await fetch('https://api.github.com/repos/luo282/zodiac-tool/contents/operation_log.json', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    console.warn('写入日志失败:', e);
   }
 }
 
@@ -434,10 +655,13 @@ async function doAddAccount() {
 
   try {
     const res = await Auth.addAccount(u, p, r);
+    // 写入操作日志
+    await appendLog('add', '添加了账号 <strong>' + u + '</strong>（' + (r === 'admin' ? '管理员' : '普通用户') + '）');
     alert('✅ ' + res.msg);
     document.getElementById('newUser').value = '';
     document.getElementById('newPass').value = '';
     loadAccountList();
+    loadLog();
   } catch (e) {
     alert('❌ 添加失败: ' + e.message);
   } finally {
@@ -453,8 +677,11 @@ async function doDeleteAccount(username) {
 
   try {
     const res = await Auth.deleteAccount(username);
+    // 写入操作日志
+    await appendLog('delete', '删除了账号 <strong>' + username + '</strong>');
     alert('✅ ' + res.msg);
     loadAccountList();
+    loadLog();
   } catch (e) {
     alert('❌ 删除失败: ' + e.message);
   }
@@ -462,6 +689,7 @@ async function doDeleteAccount(username) {
 
 // ===== 修改密码弹窗 =====
 function openPwModal(username) {
+  if (!tokenReady) { alert('请先配置 GitHub Token'); return; }
   document.getElementById('pwUser').value = username;
   document.getElementById('pwNew').value = '';
   document.getElementById('pwConfirm').value = '';
@@ -484,9 +712,11 @@ async function doChangePw() {
 
   try {
     const res = await Auth.changePassword(u, p1);
+    // 写入操作日志
+    await appendLog('pw', '修改了账号 <strong>' + u + '</strong> 的密码');
     msg.textContent = '✅ ' + res.msg;
     msg.className = 'modal-msg success';
-    setTimeout(() => { closePwModal(); loadAccountList(); }, 1200);
+    setTimeout(() => { closePwModal(); loadAccountList(); loadLog(); }, 1200);
   } catch (e) {
     msg.textContent = e.message;
     msg.className = 'modal-msg error';
