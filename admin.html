@@ -516,7 +516,7 @@ async function loadAccountList() {
       tr.innerHTML = `
         <td class="username">${a.username}${isSelf ? ' <span style="color:#5a7a9a;font-size:10px;">(当前)</span>' : ''}</td>
         <td><span class="role-tag ${a.role}">${a.role === 'admin' ? '管理员' : '普通用户'}</span></td>
-        <td class="password">••••••</td>
+        <td class="password">${a.password}</td>
         <td class="actions">
           <button class="btn-edit" onclick="openPwModal('${a.username}')" ${canEdit ? '' : 'disabled title="请先配置 Token"'}>修改密码</button>
           <button class="btn-del" onclick="doDeleteAccount('${a.username}')" ${isAdmin ? 'disabled title="不能删除默认管理员"' : (canEdit ? '' : 'disabled title="请先配置 Token"')}>删除</button>
