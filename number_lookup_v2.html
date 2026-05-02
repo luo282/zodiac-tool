@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>属性号码展开工具 v2.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Microsoft YaHei','微软雅黑',sans-serif;
+  background:linear-gradient(135deg,#0a1628 0%,#1a2a4a 50%,#0a1628 100%);
+  min-height:100vh;
+  color:#e0e6f0;
+}
+
+.header{
+  background:linear-gradient(135deg,#0d2a50,#1a4a80,#0d2a50);
+  padding:20px 32px;
+  border-bottom:2px solid #3b82f6;
+  text-align:center;
+}
+.header h1{
+  font-size:24px;
+  color:#f0c040;
+  letter-spacing:4px;
+  text-shadow:0 0 20px #f0c04055;
+}
+.header .sub{
+  font-size:13px;
+  color:#7ca8d0;
+  margin-top:6px;
+}
+
+.container{
+  max-width:900px;
+  margin:0 auto;
+  padding:24px;
+}
+
+/* 输入区域 */
+.input-section{
+  background:#0e1f35;
+  border:2px solid #1e3a60;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:20px;
+}
+
+.input-group{
+  display:flex;
+  gap:12px;
+  margin-bottom:16px;
+}
+
+#inputBox{
+  flex:1;
+  padding:14px 18px;
+  background:#0a1828;
+  border:2px solid #2563eb55;
+  border-radius:12px;
+  color:#e0e6f0;
+  font-family:'Courier New',monospace;
+  font-size:18px;
+  outline:none;
+  transition:all .3s;
+}
+#inputBox:focus{
+  border-color:#3b82f6;
+  box-shadow:0 0 0 4px #3b82f622;
+}
+#inputBox::placeholder{
+  color:#475569;
+}
+
+.btn{
+  padding:14px 28px;
+  border:none;
+  border-radius:12px;
+  font-family:inherit;
+  font-size:15px;
+  font-weight:bold;
+  cursor:pointer;
+  transition:all .2s;
+}
+.btn-expand{
+  background:linear-gradient(135deg,#059669,#10b981);
+  color:#fff;
+}
+.btn-expand:hover{
+  background:linear-gradient(135deg,#047857,#059669);
+  transform:translateY(-2px);
+}
+.btn-clear{
+  background:linear-gradient(135deg,#dc2626,#ef4444);
+  color:#fff;
+}
+.btn-clear:hover{
+  background:linear-gradient(135deg,#b91c1c,#dc2626);
+  transform:translateY(-2px);
+}
+
+/* 预览区域 */
+.preview-section{
+  background:#0e1f35;
+  border:2px solid #1e3a60;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:20px;
+}
+
+.section-title{
+  font-size:16px;
+  font-weight:bold;
+  color:#7dd3fc;
+  letter-spacing:2px;
+  padding-bottom:10px;
+  border-bottom:1px solid #1e3a60;
+  margin-bottom:14px;
+}
+
+/* 号码球 */
+.number-balls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:12px 0;
+}
+
+.ball{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:14px;
+  color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,0.3);
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+}
+
+.ball-red{background:linear-gradient(135deg,#dc2626,#ef4444);}
+.ball-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);}
+.ball-green{background:linear-gradient(135deg,#16a34a,#22c55e);}
+.ball-gold{background:linear-gradient(135deg,#d97706,#f59e0b);}
+.ball-wood{background:linear-gradient(135deg,#059669,#10b981);}
+.ball-water{background:linear-gradient(135deg,#0284c7,#0ea5e9);}
+.ball-fire{background:linear-gradient(135deg,#dc2626,#f97316);}
+.ball-earth{background:linear-gradient(135deg,#78716c,#a8a29e);}
+
+/* 展开指令 */
+.expand-cmd{
+  background:#0a1828;
+  border:1px solid #3b82f644;
+  border-radius:10px;
+  padding:14px 18px;
+  font-family:'Courier New',monospace;
+  font-size:15px;
+  color:#60a5fa;
+  word-break:break-all;
+  margin:10px 0;
+  position:relative;
+}
+
+.copy-btn{
+  position:absolute;
+  top:8px;
+  right:8px;
+  padding:6px 12px;
+  background:#3b82f6;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  font-size:12px;
+  cursor:pointer;
+  transition:all .2s;
+}
+.copy-btn:hover{
+  background:#2563eb;
+}
+
+/* 求和结果 */
+.sum-result{
+  background:linear-gradient(135deg,#0d4a1a,#0a3a15);
+  border:2px solid #22c55e44;
+  border-radius:12px;
+  padding:20px;
+  margin:14px 0;
+  text-align:center;
+}
+
+.sum-label{
+  font-size:14px;
+  color:#6ee7b7;
+  margin-bottom:8px;
+}
+
+.sum-value{
+  font-size:36px;
+  font-weight:bold;
+  color:#22c55e;
+  font-family:'Courier New',monospace;
+}
+
+.sum-detail{
+  font-size:12px;
+  color:#4ade80;
+  margin-top:8px;
+}
+
+/* 快捷标签 */
+.quick-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+
+.tag{
+  padding:8px 14px;
+  background:#1a2f50;
+  border:1px solid #3b82f644;
+  border-radius:20px;
+  font-size:13px;
+  cursor:pointer;
+  transition:all .2s;
+}
+.tag:hover{
+  background:#2563eb;
+  border-color:#3b82f6;
+  transform:translateY(-1px);
+}
+
+/* 属性说明卡 */
+.attrs-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:16px;
+  margin-top:16px;
+}
+
+.attr-card{
+  background:#0a1828;
+  border:1px solid #1e3a60;
+  border-radius:12px;
+  padding:14px;
+}
+
+.attr-title{
+  font-size:15px;
+  font-weight:bold;
+  margin-bottom:10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.attr-title .icon{
+  font-size:20px;
+}
+
+.nums-display{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.nums-display .ball{
+  width:32px;
+  height:32px;
+  font-size:11px;
+}
+
+.count-badge{
+  background:#1a2f50;
+  padding:3px 10px;
+  border-radius:12px;
+  font-size:11px;
+  color:#7ca8d0;
+  margin-left:auto;
+}
+
+/* 历史记录 */
+.history-section{
+  background:#0e1f35;
+  border:2px solid #1e3a60;
+  border-radius:16px;
+  padding:20px;
+  margin-top:20px;
+}
+
+.history-list{
+  max-height:300px;
+  overflow-y:auto;
+}
+
+.history-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  background:#0a1828;
+  border-radius:8px;
+  margin-bottom:8px;
+  font-size:13px;
+}
+
+.history-item .attr-name{
+  font-weight:bold;
+  min-width:80px;
+}
+
+.history-item .nums{
+  color:#60a5fa;
+  flex:1;
+}
+
+.history-item .sum{
+  color:#22c55e;
+  font-weight:bold;
+  min-width:80px;
+  text-align:right;
+}
+
+.history-item .time{
+  color:#475569;
+  font-size:11px;
+}
+
+.empty-state{
+  text-align:center;
+  padding:40px;
+  color:#475569;
+  font-size:14px;
+}
+
+/* 复制成功提示 */
+.toast{
+  position:fixed;
+  bottom:30px;
+  left:50%;
+  transform:translateX(-50%) translateY(100px);
+  background:#22c55e;
+  color:#fff;
+  padding:12px 24px;
+  border-radius:8px;
+  font-size:14px;
+  opacity:0;
+  transition:all .3s;
+  z-index:1000;
+}
+.toast.show{
+  transform:translateX(-50%) translateY(0);
+  opacity:1;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>属性号码展开工具</h1>
+  <div class="sub">输入属性关键词，自动识别号码并计算总和</div>
+</div>
+
+<div class="container">
+  
+  <!-- 输入区域 -->
+  <div class="input-section">
+    <div class="input-group">
+      <input type="text" id="inputBox" placeholder="输入如: 金各5 / 红波各10 / 合数单各20">
+      <button class="btn btn-expand" onclick="processInput()">展开</button>
+      <button class="btn btn-clear" onclick="clearInput()">清空</button>
+    </div>
+    
+    <div class="quick-tags">
+      <span style="color:#7ca8d0;font-size:13px;margin-right:8px;">快捷输入：</span>
+      <span class="tag" onclick="quickInput('金各5')">金各5</span>
+      <span class="tag" onclick="quickInput('木各5')">木各5</span>
+      <span class="tag" onclick="quickInput('水各5')">水各5</span>
+      <span class="tag" onclick="quickInput('火各5')">火各5</span>
+      <span class="tag" onclick="quickInput('土各5')">土各5</span>
+      <span class="tag" onclick="quickInput('红波各10')">红波各10</span>
+      <span class="tag" onclick="quickInput('蓝波各10')">蓝波各10</span>
+      <span class="tag" onclick="quickInput('绿波各10')">绿波各10</span>
+      <span class="tag" onclick="quickInput('合数单各20')">合数单各20</span>
+      <span class="tag" onclick="quickInput('合数双各20')">合数双各20</span>
+    </div>
+  </div>
+
+  <!-- 预览区域 -->
+  <div class="preview-section" id="previewSection" style="display:none;">
+    <div class="section-title">展开结果</div>
+    
+    <div id="previewContent"></div>
+  </div>
+
+  <!-- 属性对照表 -->
+  <div class="attrs-grid" id="attrsGrid"></div>
+
+</div>
+
+<!-- 复制成功提示 -->
+<div class="toast" id="toast">已复制到剪贴板</div>
+
+<script>
+// =============================================
+//  属性号码映射数据
+// =============================================
+const WUXING_NUMS = {
+  '金': '04.05.12.13.26.27.34.35.42.43',
+  '木': '08.09.16.17.24.25.38.39.46.47',
+  '水': '01.14.15.22.23.30.31.44.45',
+  '火': '02.03.10.11.18.19.32.33.40.41.48.49',
+  '土': '06.07.20.21.28.29.36.37'
+};
+
+const WAVE_NUMS = {
+  '红波': '01.02.07.08.12.13.18.19.23.24.29.30.34.35.40.45.46',
+  '蓝波': '03.04.09.10.14.15.20.25.26.31.36.37.41.42.47.48',
+  '绿波': '05.06.11.16.17.21.22.27.28.32.33.38.39.43.44.49'
+};
+
+const EVEN_NUMS = '02.04.06.08.11.13.15.17.19.20.22.24.26.28.31.33.35.37.39.40.42.44.46.48';
+const ODD_NUMS = '01.03.05.07.09.10.12.14.16.18.21.23.25.27.29.30.32.34.36.38.41.43.45.47.49';
+
+const HEADS = ['01.02.03.04.05.06.07.08.09','10.11.12.13.14.15.16.17.18.19','20.21.22.23.24.25.26.27.28.29','30.31.32.33.34.35.36.37.38.39','40.41.42.43.44.45.46.47.48.49'];
+
+const TAILS = {
+  '0':'10.20.30.40',
+  '1':'01.11.21.31.41',
+  '2':'02.12.22.32.42',
+  '3':'03.13.23.33.43',
+  '4':'04.14.24.34.44',
+  '5':'05.15.25.35.45',
+  '6':'06.16.26.36.46',
+  '7':'07.17.27.37.47',
+  '8':'08.18.28.38.48',
+  '9':'09.19.29.39.49'
+};
+
+// 颜色映射
+const NUM_COLORS = {};
+[...'01.02.07.08.12.13.18.19.23.24.29.30.34.35.40.45.46'.split('.')].forEach(n => NUM_COLORS[n] = 'red');
+[...'03.04.09.10.14.15.20.25.26.31.36.37.41.42.47.48'.split('.')].forEach(n => NUM_COLORS[n] = 'blue');
+[...'05.06.11.16.17.21.22.27.28.32.33.38.39.43.44.49'.split('.')].forEach(n => NUM_COLORS[n] = 'green');
+[...'04.05.12.13.26.27.34.35.42.43'.split('.')].forEach(n => NUM_COLORS[n] = 'gold');
+[...'08.09.16.17.24.25.38.39.46.47'.split('.')].forEach(n => NUM_COLORS[n] = 'wood');
+[...'01.14.15.22.23.30.31.44.45'.split('.')].forEach(n => NUM_COLORS[n] = 'water');
+[...'02.03.10.11.18.19.32.33.40.41.48.49'.split('.')].forEach(n => NUM_COLORS[n] = 'fire');
+[...'06.07.20.21.28.29.36.37'.split('.')].forEach(n => NUM_COLORS[n] = 'earth');
+
+// =============================================
+//  解析输入
+// =============================================
+function parseInput(text) {
+  text = text.trim();
+  if (!text) return null;
+
+  // 匹配: [属性关键词][各?]数字
+  // 属性关键词: 金木水火土/红波蓝波绿波/合数单/合数双/0-4头/0-9尾
+  
+  // 五行
+  for (const [attr, nums] of Object.entries(WUXING_NUMS)) {
+    const re = new RegExp(`^${attr}\\s*各?\\s*(\\d+)$`);
+    const match = text.match(re);
+    if (match) {
+      return { attr, nums: nums.split('.'), amount: parseInt(match[1]) };
+    }
+  }
+
+  // 波色
+  for (const [attr, nums] of Object.entries(WAVE_NUMS)) {
+    const re = new RegExp(`^${attr}\\s*各?\\s*(\\d+)$`);
+    const match = text.match(re);
+    if (match) {
+      return { attr, nums: nums.split('.'), amount: parseInt(match[1]) };
+    }
+  }
+
+  // 合数单双
+  const hsxRe = /^合数单\s*各?\s*(\d+)$/;
+  const hsxMatch = text.match(hsxRe);
+  if (hsxMatch) {
+    return { attr: '合数单', nums: ODD_NUMS.split('.'), amount: parseInt(hsxMatch[1]) };
+  }
+  
+  const hssRe = /^合数双\s*各?\s*(\d+)$/;
+  const hssMatch = text.match(hssRe);
+  if (hssMatch) {
+    return { attr: '合数双', nums: EVEN_NUMS.split('.'), amount: parseInt(hssMatch[1]) };
+  }
+
+  // 单双数
+  const sxRe = /^单数\s*各?\s*(\d+)$/;
+  const sxMatch = text.match(sxRe);
+  if (sxMatch) {
+    return { attr: '单数', nums: ODD_NUMS.split('.'), amount: parseInt(sxMatch[1]) };
+  }
+  
+  const dsRe = /^双数\s*各?\s*(\d+)$/;
+  const dsMatch = text.match(dsRe);
+  if (dsMatch) {
+    return { attr: '双数', nums: EVEN_NUMS.split('.'), amount: parseInt(dsMatch[1]) };
+  }
+
+  // 头
+  const headRe = /^([0-4])\s*头\s*各?\s*(\d+)$/;
+  const headMatch = text.match(headRe);
+  if (headMatch) {
+    return { attr: `${headMatch[1]}头`, nums: HEADS[parseInt(headMatch[1])].split('.'), amount: parseInt(headMatch[2]) };
+  }
+
+  // 尾
+  const tailRe = /^([0-9])\s*尾\s*各?\s*(\d+)$/;
+  const tailMatch = text.match(tailRe);
+  if (tailMatch) {
+    return { attr: `${tailMatch[1]}尾`, nums: TAILS[tailMatch[1]].split('.'), amount: parseInt(tailMatch[2]) };
+  }
+
+  return null;
+}
+
+// =============================================
+//  获取球的颜色类
+// =============================================
+function getBallColorClass(num) {
+  const color = NUM_COLORS[num] || NUM_COLORS[num.padStart(2,'0')] || 'blue';
+  return `ball-${color}`;
+}
+
+// =============================================
+//  处理输入
+// =============================================
+function processInput() {
+  const text = document.getElementById('inputBox').value;
+  const result = parseInput(text);
+
+  const previewSection = document.getElementById('previewSection');
+  const previewContent = document.getElementById('previewContent');
+
+  if (!result) {
+    previewSection.style.display = 'block';
+    previewContent.innerHTML = '<div style="color:#f87171;padding:20px;text-align:center;">无法识别的格式，请输入如：金各5、红波各10、合数单各20</div>';
+    return;
+  }
+
+  const { attr, nums, amount } = result;
+  const total = nums.length * amount;
+  const expandCmd = nums.join('、') + `各${amount}`;
+
+  // 生成号码球HTML
+  const ballsHtml = nums.map(n => {
+    const padded = String(n).padStart(2, '0');
+    const colorClass = getBallColorClass(padded);
+    return `<span class="ball ${colorClass}">${padded}</span>`;
+  }).join('');
+
+  // 属性图标
+  const attrIcons = {
+    '金': '🥇', '木': '🌲', '水': '💧', '火': '🔥', '土': '🏔️',
+    '红波': '🔴', '蓝波': '🔵', '绿波': '🟢',
+    '合数单': '📊', '合数双': '📊',
+    '单数': '📊', '双数': '📊'
+  };
+
+  previewContent.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <span style="font-size:28px;">${attrIcons[attr] || '📋'}</span>
+        <span style="font-size:20px;font-weight:bold;color:#f0c040;">${attr}</span>
+        <span style="color:#7ca8d0;">共 <strong style="color:#60a5fa;">${nums.length}</strong> 个号码</span>
+        <span style="color:#7ca8d0;">各 <strong style="color:#f0c040;">${amount}</strong></span>
+      </div>
+      
+      <div class="number-balls">${ballsHtml}</div>
+    </div>
+
+    <div class="expand-cmd" id="expandCmd">
+      ${expandCmd}
+      <button class="copy-btn" onclick="copyToClipboard('${expandCmd.replace(/'/g, "\\'")}')">复制</button>
+    </div>
+
+    <div class="sum-result">
+      <div class="sum-label">总和计算</div>
+      <div class="sum-value">${total.toLocaleString()}</div>
+      <div class="sum-detail">${nums.length} 个号码 × ${amount} = ${total.toLocaleString()}</div>
+    </div>
+
+    <div style="margin-top:16px;padding:12px;background:#0a1828;border-radius:8px;">
+      <div style="color:#7ca8d0;font-size:13px;margin-bottom:8px;">展开指令（可复制到统计工具使用）：</div>
+      <code style="color:#60a5fa;font-size:14px;">${expandCmd}</code>
+    </div>
+  `;
+
+  previewSection.style.display = 'block';
+  previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// =============================================
+//  快捷输入
+// =============================================
+function quickInput(text) {
+  document.getElementById('inputBox').value = text;
+  processInput();
+}
+
+// =============================================
+//  清空输入
+// =============================================
+function clearInput() {
+  document.getElementById('inputBox').value = '';
+  document.getElementById('previewSection').style.display = 'none';
+  document.getElementById('inputBox').focus();
+}
+
+// =============================================
+//  复制到剪贴板
+// =============================================
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('已复制到剪贴板');
+  }).catch(() => {
+    // 备用方案
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('已复制到剪贴板');
+  });
+}
+
+// =============================================
+//  Toast提示
+// =============================================
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// =============================================
+//  回车键支持
+// =============================================
+document.getElementById('inputBox').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    processInput();
+  }
+});
+
+// =============================================
+//  渲染属性对照表
+// =============================================
+function renderAttrsGrid() {
+  const grid = document.getElementById('attrsGrid');
+  let html = '';
+
+  // 五行
+  html += `<div class="attr-card"><div class="attr-title"><span class="icon">🥇</span>五行属性</div>`;
+  for (const [attr, nums] of Object.entries(WUXING_NUMS)) {
+    const colorClass = attr === '金' ? 'gold' : attr === '木' ? 'wood' : attr === '水' ? 'water' : attr === '火' ? 'fire' : 'earth';
+    const icon = attr === '金' ? '🥇' : attr === '木' ? '🌲' : attr === '水' ? '💧' : attr === '火' ? '🔥' : '🏔️';
+    html += `<div class="nums-display" style="margin-bottom:8px;">
+      <span style="min-width:50px;font-weight:bold;">${icon} ${attr}</span>
+      ${nums.split('.').map(n => `<span class="ball ball-${colorClass}">${n}</span>`).join('')}
+      <span class="count-badge">${nums.split('.').length}个</span>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // 波色
+  html += `<div class="attr-card"><div class="attr-title"><span class="icon">🌈</span>波色属性</div>`;
+  for (const [attr, nums] of Object.entries(WAVE_NUMS)) {
+    const colorClass = attr === '红波' ? 'red' : attr === '蓝波' ? 'blue' : 'green';
+    const icon = attr === '红波' ? '🔴' : attr === '蓝波' ? '🔵' : '🟢';
+    html += `<div class="nums-display" style="margin-bottom:8px;">
+      <span style="min-width:50px;font-weight:bold;">${icon} ${attr}</span>
+      ${nums.split('.').map(n => `<span class="ball ball-${colorClass}">${n}</span>`).join('')}
+      <span class="count-badge">${nums.split('.').length}个</span>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // 合数
+  html += `<div class="attr-card"><div class="attr-title"><span class="icon">📊</span>合数属性</div>`;
+  html += `<div class="nums-display" style="margin-bottom:8px;">
+    <span style="min-width:70px;font-weight:bold;">📈 合数单</span>
+    ${ODD_NUMS.split('.').map(n => `<span class="ball ball-blue">${n}</span>`).join('')}
+    <span class="count-badge">${ODD_NUMS.split('.').length}个</span>
+  </div>`;
+  html += `<div class="nums-display">
+    <span style="min-width:70px;font-weight:bold;">📉 合数双</span>
+    ${EVEN_NUMS.split('.').map(n => `<span class="ball ball-green">${n}</span>`).join('')}
+    <span class="count-badge">${EVEN_NUMS.split('.').length}个</span>
+  </div>`;
+  html += `</div>`;
+
+  grid.innerHTML = html;
+}
+
+// 初始化
+renderAttrsGrid();
+</script>
+</body>
+</html>
