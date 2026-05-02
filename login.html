@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 — 动物号码累计工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Microsoft YaHei','微软雅黑',sans-serif;
+  background:#0d1b2a;
+  color:#e0e6f0;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+/* 背景粒子效果 */
+body::before{
+  content:'';position:fixed;top:0;left:0;width:100%;height:100%;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(37,99,235,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(16,185,129,0.08) 0%, transparent 50%);
+  z-index:0;
+}
+
+.login-card{
+  position:relative;z-index:1;
+  background:linear-gradient(145deg, #0e1f35 0%, #0a1628 100%);
+  border:1px solid #1e3a60;
+  border-radius:20px;
+  padding:48px 40px;
+  width:420px;
+  max-width:92vw;
+  box-shadow:0 25px 60px rgba(0,0,0,0.5), 0 0 80px rgba(37,99,235,0.1);
+}
+
+.login-card h1{
+  text-align:center;
+  font-size:22px;
+  color:#f0c040;
+  letter-spacing:3px;
+  margin-bottom:6px;
+  text-shadow:0 0 20px #f0c04055;
+}
+.login-card .subtitle{
+  text-align:center;font-size:12px;color:#5a7a9a;margin-bottom:32px;
+}
+
+.form-group{margin-bottom:20px;}
+.form-group label{
+  display:block;font-size:13px;color:#7ca8d0;margin-bottom:6px;letter-spacing:1px;
+}
+.form-group input{
+  width:100%;padding:12px 16px;
+  background:#0a1628;border:1px solid #1e3a60;border-radius:10px;
+  color:#e0e6f0;font-size:15px;font-family:inherit;
+  transition:border-color .2s,box-shadow .2s;
+  outline:none;
+}
+.form-group input:focus{
+  border-color:#2563eb;
+  box-shadow:0 0 12px rgba(37,99,235,0.3);
+}
+.form-group input::placeholder{color:#3a5a7a;}
+
+.login-btn{
+  width:100%;padding:14px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,#2563eb,#3b82f6);
+  color:#fff;font-size:16px;font-weight:bold;letter-spacing:2px;
+  cursor:pointer;transition:all .25s;margin-top:8px;
+}
+.login-btn:hover{
+  background:linear-gradient(135deg,#1d4ed8,#2563eb);
+  transform:translateY(-2px);
+  box-shadow:0 8px 25px rgba(37,99,235,0.4);
+}
+.login-btn:active{transform:translateY(0);}
+.login-btn:disabled{
+  opacity:0.5;cursor:not-allowed;transform:none;
+  box-shadow:none;
+}
+
+.msg{
+  text-align:center;font-size:13px;margin-top:14px;
+  min-height:20px;transition:all .3s;
+}
+.msg.error{color:#ef4444;}
+.msg.success{color:#10b981;}
+.msg.info{color:#3b82f6;}
+
+/* ===== 管理面板 ===== */
+.admin-toggle{
+  display:block;margin:20px auto 0;
+  background:none;border:1px solid #1e3a60;border-radius:8px;
+  color:#3a5a7a;font-size:12px;padding:6px 16px;cursor:pointer;
+  transition:all .2s;
+}
+.admin-toggle:hover{color:#7ca8d0;border-color:#3a6a9a;}
+
+.admin-panel{
+  display:none;margin-top:24px;padding-top:20px;
+  border-top:1px solid #1e3a60;
+}
+.admin-panel.show{display:block;}
+
+.admin-panel h3{
+  font-size:14px;color:#f0c040;margin-bottom:12px;letter-spacing:1px;
+}
+
+.token-section{margin-bottom:16px;}
+.token-section p{font-size:11px;color:#5a7a9a;margin-bottom:6px;}
+.token-row{display:flex;gap:8px;}
+.token-row input{flex:1;}
+.token-btn{
+  padding:8px 14px;border:none;border-radius:8px;
+  background:#2563eb;color:#fff;font-size:12px;cursor:pointer;
+  white-space:nowrap;
+}
+.token-btn:hover{background:#1d4ed8;}
+.token-btn.danger{background:#dc2626;}
+.token-btn.danger:hover{background:#b91c1c;}
+.token-btn.success{background:#059669;}
+.token-btn.success:hover{background:#047857;}
+
+.token-status{
+  font-size:11px;margin-top:6px;
+}
+.token-status.ok{color:#10b981;}
+.token-status.no{color:#ef4444;}
+
+/* 账号列表 */
+.account-list{margin-top:12px;}
+.account-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;margin-bottom:6px;
+  background:#0a1628;border:1px solid #1e3a60;border-radius:8px;
+  font-size:12px;
+}
+.account-item .name{
+  color:#f0c040;font-weight:bold;min-width:60px;
+}
+.account-item .role{
+  background:#1e3a60;color:#7ca8d0;padding:2px 8px;border-radius:4px;font-size:10px;
+}
+.account-item .pw{
+  color:#5a7a9a;flex:1;
+}
+.account-item button{
+  padding:4px 10px;border:none;border-radius:6px;
+  font-size:11px;cursor:pointer;color:#fff;
+}
+.account-item .btn-pw{background:#7c3aed;}
+.account-item .btn-pw:hover{background:#6d28d9;}
+.account-item .btn-del{background:#dc2626;}
+.account-item .btn-del:hover{background:#b91c1c;}
+
+/* 添加账号 */
+.add-form{
+  margin-top:12px;padding:10px;
+  background:#0a1628;border:1px dashed #1e3a60;border-radius:8px;
+}
+.add-form h4{font-size:12px;color:#7ca8d0;margin-bottom:8px;}
+.add-row{display:flex;gap:6px;margin-bottom:6px;}
+.add-row input,.add-row select{
+  padding:6px 10px;background:#0d1b2a;border:1px solid #1e3a60;
+  border-radius:6px;color:#e0e6f0;font-size:12px;font-family:inherit;
+}
+.add-row input{flex:1;}
+.add-row select{min-width:70px;}
+.add-submit{
+  padding:6px 16px;border:none;border-radius:6px;
+  background:#059669;color:#fff;font-size:12px;cursor:pointer;
+  width:100%;
+}
+.add-submit:hover{background:#047857;}
+
+/* 修改密码弹窗 */
+.modal-overlay{
+  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.7);z-index:100;
+  align-items:center;justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal-box{
+  background:#0e1f35;border:1px solid #1e3a60;border-radius:16px;
+  padding:28px;width:360px;max-width:90vw;
+}
+.modal-box h3{color:#f0c040;font-size:15px;margin-bottom:16px;}
+.modal-box .form-group{margin-bottom:14px;}
+.modal-btns{display:flex;gap:8px;margin-top:16px;}
+.modal-btns button{
+  flex:1;padding:10px;border:none;border-radius:8px;
+  font-size:13px;cursor:pointer;color:#fff;font-weight:bold;
+}
+.modal-btns .confirm{background:#2563eb;}
+.modal-btns .confirm:hover{background:#1d4ed8;}
+.modal-btns .cancel{background:#374151;}
+.modal-btns .cancel:hover{background:#4b5563;}
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <h1>🔐 登录验证</h1>
+  <p class="subtitle">动物号码实时累计工具</p>
+
+  <div class="form-group">
+    <label>账 号</label>
+    <input type="text" id="username" placeholder="请输入账号" autocomplete="username">
+  </div>
+  <div class="form-group">
+    <label>密 码</label>
+    <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password">
+  </div>
+  <button class="login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
+  <div class="msg" id="msg"></div>
+
+  <!-- 管理入口 -->
+  <button class="admin-toggle" onclick="toggleAdmin()">⚙ 管理员设置</button>
+
+  <div class="admin-panel" id="adminPanel">
+    <h3>🔑 Token 配置</h3>
+    <div class="token-section">
+      <p>配置 GitHub Token 后可管理账号（添加/删除/改密码）。<br>Token 仅存储在当前浏览器，其他设备无法操作。</p>
+      <div class="token-row">
+        <input type="password" id="tokenInput" placeholder="粘贴 GitHub Token (Fine-grained PAT)">
+        <button class="token-btn success" onclick="saveToken()">保存</button>
+        <button class="token-btn danger" onclick="removeToken()">清除</button>
+      </div>
+      <div class="token-status" id="tokenStatus"></div>
+    </div>
+
+    <!-- 账号管理列表 -->
+    <div id="accountManager" style="display:none;">
+      <h3>👥 账号管理</h3>
+      <div class="account-list" id="accountList"></div>
+
+      <div class="add-form">
+        <h4>➕ 添加新账号</h4>
+        <div class="add-row">
+          <input id="newUser" placeholder="账号名">
+          <input id="newPass" type="password" placeholder="密码">
+          <select id="newRole">
+            <option value="user">普通用户</option>
+            <option value="admin">管理员</option>
+          </select>
+        </div>
+        <button class="add-submit" onclick="doAddAccount()">添加账号</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 修改密码弹窗 -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal-box">
+    <h3>✏️ 修改密码</h3>
+    <div class="form-group">
+      <label>账 号</label>
+      <input type="text" id="pwUser" readonly style="opacity:0.6;">
+    </div>
+    <div class="form-group">
+      <label>新密码</label>
+      <input type="text" id="pwNew" placeholder="输入新密码">
+    </div>
+    <div class="form-group">
+      <label>确认密码</label>
+      <input type="text" id="pwConfirm" placeholder="再次输入新密码">
+    </div>
+    <div class="msg" id="pwMsg"></div>
+    <div class="modal-btns">
+      <button class="confirm" onclick="doChangePw()">确认修改</button>
+      <button class="cancel" onclick="closePwModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script>
+// ===== 自动检查登录状态 =====
+if (Auth.isLoggedIn()) {
+  window.location.href = 'index.html';
+}
+
+// ===== 回车登录 =====
+document.getElementById('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('username').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('password').focus();
+});
+
+// ===== 登录 =====
+async function doLogin() {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value;
+  const btn = document.getElementById('loginBtn');
+  const msg = document.getElementById('msg');
+
+  if (!u || !p) { showMsg(msg, '请输入账号和密码', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '验证中...';
+  showMsg(msg, '正在验证...', 'info');
+
+  try {
+    const res = await Auth.login(u, p);
+    if (res.ok) {
+      showMsg(msg, '登录成功，正在跳转...', 'success');
+      setTimeout(() => { window.location.href = 'index.html'; }, 600);
+    } else {
+      showMsg(msg, res.msg, 'error');
+    }
+  } catch (e) {
+    showMsg(msg, '登录失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '登 录';
+  }
+}
+
+function showMsg(el, text, type) {
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+}
+
+// ===== 管理面板 =====
+function toggleAdmin() {
+  const panel = document.getElementById('adminPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) checkTokenStatus();
+}
+
+async function checkTokenStatus() {
+  const el = document.getElementById('tokenStatus');
+  const mgr = document.getElementById('accountManager');
+
+  if (!Auth.hasToken()) {
+    el.className = 'token-status no';
+    el.textContent = '❌ 未配置 Token';
+    mgr.style.display = 'none';
+    return;
+  }
+
+  el.textContent = '⏳ 验证 Token...';
+  el.className = 'token-status info';
+  
+  try {
+    const res = await Auth.verifyToken();
+    if (res.ok) {
+      el.className = 'token-status ok';
+      el.textContent = '✅ Token 有效 (用户: ' + res.username + ')';
+      mgr.style.display = 'block';
+      loadAccountList();
+    } else {
+      el.className = 'token-status no';
+      el.textContent = '❌ Token 无效: ' + res.msg;
+      mgr.style.display = 'none';
+    }
+  } catch (e) {
+    el.className = 'token-status no';
+    el.textContent = '❌ 验证失败: ' + e.message;
+    mgr.style.display = 'none';
+  }
+}
+
+async function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { alert('请粘贴 Token'); return; }
+  Auth.configureToken(t);
+  document.getElementById('tokenInput').value = '';
+  await checkTokenStatus();
+}
+
+function removeToken() {
+  if (!confirm('确认清除 Token？清除后无法管理账号。')) return;
+  Auth.clearToken();
+  checkTokenStatus();
+}
+
+// ===== 账号列表 =====
+async function loadAccountList() {
+  const list = document.getElementById('accountList');
+  list.innerHTML = '<div style="color:#5a7a9a;font-size:11px;text-align:center;padding:8px;">加载中...</div>';
+
+  try {
+    const accounts = await Auth.listAccounts();
+    list.innerHTML = '';
+    accounts.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'account-item';
+      div.innerHTML = `
+        <span class="name">${a.username}</span>
+        <span class="role">${a.role === 'admin' ? '管理员' : '用户'}</span>
+        <span class="pw">****</span>
+        <button class="btn-pw" onclick="openPwModal('${a.username}')">改密</button>
+        ${a.username !== 'admin' ? '<button class="btn-del" onclick="doDeleteAccount(\'' + a.username + '\')">删除</button>' : ''}
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = '<div style="color:#ef4444;font-size:11px;">' + e.message + '</div>';
+  }
+}
+
+// ===== 添加账号 =====
+async function doAddAccount() {
+  const u = document.getElementById('newUser').value.trim();
+  const p = document.getElementById('newPass').value;
+  const r = document.getElementById('newRole').value;
+
+  if (!u || !p) { alert('请填写账号和密码'); return; }
+
+  try {
+    const res = await Auth.addAccount(u, p, r);
+    alert(res.msg);
+    document.getElementById('newUser').value = '';
+    document.getElementById('newPass').value = '';
+    loadAccountList();
+  } catch (e) {
+    alert('添加失败: ' + e.message);
+  }
+}
+
+// ===== 删除账号 =====
+async function doDeleteAccount(username) {
+  if (!confirm('确认删除账号 "' + username + '"？')) return;
+  try {
+    const res = await Auth.deleteAccount(username);
+    alert(res.msg);
+    loadAccountList();
+  } catch (e) {
+    alert('删除失败: ' + e.message);
+  }
+}
+
+// ===== 修改密码弹窗 =====
+function openPwModal(username) {
+  document.getElementById('pwUser').value = username;
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwConfirm').value = '';
+  document.getElementById('pwMsg').textContent = '';
+  document.getElementById('pwModal').classList.add('show');
+}
+function closePwModal() {
+  document.getElementById('pwModal').classList.remove('show');
+}
+async function doChangePw() {
+  const u = document.getElementById('pwUser').value;
+  const p1 = document.getElementById('pwNew').value;
+  const p2 = document.getElementById('pwConfirm').value;
+  const msg = document.getElementById('pwMsg');
+
+  if (!p1) { showMsg(msg, '请输入新密码', 'error'); return; }
+  if (p1 !== p2) { showMsg(msg, '两次密码不一致', 'error'); return; }
+
+  try {
+    const res = await Auth.changePassword(u, p1);
+    showMsg(msg, res.msg, 'success');
+    setTimeout(() => { closePwModal(); loadAccountList(); }, 1000);
+  } catch (e) {
+    showMsg(msg, e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>
