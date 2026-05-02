@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>动物号码实时累计工具 v3.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Microsoft YaHei','微软雅黑',sans-serif;background:#0d1b2a;color:#e0e6f0;min-height:100vh;}
+
+/* ===== 顶部标题 ===== */
+.header{
+  background:linear-gradient(135deg,#0d2a50,#0a3a6e,#0d2a50);
+  padding:18px 32px;border-bottom:2px solid #2563eb;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+.header h1{font-size:20px;color:#f0c040;letter-spacing:3px;text-shadow:0 0 16px #f0c04055;}
+.header .sub{font-size:12px;color:#7ca8d0;margin-top:3px;}
+.header-right{display:flex;gap:10px;flex-wrap:wrap;}
+.btn{
+  padding:8px 18px;border:none;border-radius:8px;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:1px;
+  transition:all .2s;
+}
+.btn-export{background:linear-gradient(135deg,#059669,#10b981);color:#fff;}
+.btn-export:hover{background:linear-gradient(135deg,#047857,#059669);transform:translateY(-1px);}
+.btn-clear{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;}
+.btn-clear:hover{background:linear-gradient(135deg,#b91c1c,#dc2626);transform:translateY(-1px);}
+.btn-import{background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;}
+.btn-import:hover{background:linear-gradient(135deg,#6d28d9,#7c3aed);transform:translateY(-1px);}
+
+/* ===== 主布局 ===== */
+.main{
+  display:flex;
+  gap:4px;
+  height:calc(100vh - 64px);
+  width:100%;
+  overflow:hidden;
+}
+
+/* ===== 左侧输入区 ===== */
+.left-panel{
+  width:56.25%;
+  min-width:450px;
+  background:#0e1f35;
+  border-right:2px solid #1e3a60;
+  display:grid;
+  grid-template-rows:auto 1fr auto auto;
+  grid-template-columns:1fr;
+  overflow:hidden;
+}
+
+/* 实时输入块 */
+.input-block{
+  grid-row:1;
+  display:flex;
+  flex-direction:column;
+  padding:12px 16px 8px 16px;
+  border-bottom:1px solid #1e3a60;
+  flex-shrink:0;
+}
+
+/* 本次斤额汇总块 */
+.summary-block{
+  grid-row:2;
+  display:flex;
+  flex-direction:column;
+  padding:8px 16px;
+  border-bottom:1px solid #1e3a60;
+  overflow:hidden;
+}
+
+/* 录入历史块 */
+.history-block{
+  grid-row:3;
+  display:flex;
+  flex-direction:column;
+  padding:8px 16px;
+  border-bottom:1px solid #1e3a60;
+  max-height:180px;
+  overflow:hidden;
+}
+
+/* 统计卡片块 */
+.stats-block{
+  grid-row:4;
+  padding:2px 12px 4px 12px;
+  flex-shrink:0;
+}
+
+/* ===== 右侧表格区 ===== */
+.right-panel{
+  flex:1;
+  overflow:auto;
+  padding:20px;
+  min-width:0;
+  background:#0d1b2a;
+}
+
+.section-panel{
+  display:none;
+}
+.panel-title{
+  font-size:16px;font-weight:bold;color:#7dd3fc;
+  letter-spacing:2px;padding-bottom:10px;
+  border-bottom:1px solid #1e3a60;
+  margin-bottom:8px;
+}
+.input-area{
+  flex:1;width:100%;min-height:120px;max-height:200px;
+  background:#0a1828;border:1.5px solid #2563eb55;
+  border-radius:12px;padding:12px;color:#e0e6f0;
+  font-family:'Courier New',monospace;font-size:15px;line-height:1.6;
+  resize:none;outline:none;overflow-y:auto;transition:border .2s;
+}
+.input-area:focus{border-color:#2563eb;box-shadow:0 0 0 4px #2563eb22;}
+.input-area::placeholder{color:#334d6a;font-size:16px;}
+
+.parse-result{
+  background:#0a1828;border:1px solid #1e3a6055;
+  border-radius:10px;padding:12px 14px;font-size:13px;
+  max-height:180px;overflow-y:auto;line-height:1.7;
+}
+.parse-ok{color:#34d399;}
+.parse-warn{color:#fbbf24;}
+.parse-err{color:#f87171;}
+.parse-idle{color:#475569;font-style:italic;}
+
+.stats-mini{display:flex;gap:6px;flex-wrap:nowrap;width:100%;height:37px;overflow:hidden;}
+/* 白色横向滚动条 */
+.stats-mini::-webkit-scrollbar{height:6px;}
+.stats-mini::-webkit-scrollbar-track{background:#0d1b2a;border-radius:3px;}
+.stats-mini::-webkit-scrollbar-thumb{background:#ffffff;border-radius:3px;}
+.stats-mini::-webkit-scrollbar-thumb:hover{background:#cccccc;}
+.mini-card{
+  width:100%;background:#0d2a50;border:1px solid #2563eb33;
+  border-radius:8px;padding:0 8px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;overflow:hidden;
+}
+.mini-card .mv{font-size:16px;font-weight:bold;color:#f0c040;line-height:1.2;}
+.mini-card .ml{font-size:11px;color:#5a8ab0;margin-top:2px;}
+
+/* 支持输入格式提示 */
+.tip{
+  background:#0d2030;border:1px dashed #2563eb55;
+  border-radius:8px;padding:10px 12px;font-size:12px;
+  color:#5a8ab0;line-height:1.7;margin-top:4px;
+}
+.tip code{background:#1a2f50;padding:2px 6px;border-radius:4px;color:#60a5fa;font-size:11px;}
+
+/* ===== 下方表格区 ===== */
+.right-panel table{min-width:max-content;}
+
+.table-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;flex-wrap:wrap;gap:8px;
+}
+.table-header h2{font-size:14px;color:#f0c040;letter-spacing:2px;}
+.search-box{
+  padding:6px 12px;background:#0e1f35;border:1px solid #2563eb44;
+  border-radius:6px;color:#e0e6f0;font-family:inherit;font-size:12px;outline:none;width:120px;
+}
+.search-box:focus{border-color:#2563eb;}
+
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{
+  background:#0a2a50;color:#90c8f0;padding:10px 8px;
+  text-align:center;border:1px solid #1e3a60;
+  white-space:nowrap;position:sticky;top:0;z-index:10;
+  font-size:12px;letter-spacing:1px;
+}
+thead th.t-num{background:#0d3b70;color:#f0c040;font-size:15px;}
+thead th.t-total{background:#1a3a20;color:#4ade80;font-size:14px;}
+
+tbody tr{transition:background .15s;}
+tbody tr:nth-child(even){background:#0c1a2a;}
+tbody tr:nth-child(odd){background:#0a1623;}
+tbody tr:hover{background:#162d4a;}
+
+/* 晃动跳高亮样式（红色） */
+tbody tr.highlight-row{
+  background:#8b0000 !important;
+  animation:shake-red 0.6s ease-in-out;
+}
+
+@keyframes shake-red {
+  0%, 100% { transform: translateX(0); background:#8b0000; }
+  20% { transform: translateX(-5px); background:#ff0000; }
+  40% { transform: translateX(5px); background:#8b0000; }
+  60% { transform: translateX(-5px); background:#ff0000; }
+  80% { transform: translateX(5px); background:#8b0000; }
+}
+
+/* 单元格闪烁动画 */
+@keyframes flash{0%,100%{background:inherit;}50%{background:#1e4d20;}}
+.cell-flash{animation:flash .4s ease;}
+
+td{padding:8px 6px;text-align:center;border:1px solid #1a2e45;}
+.td-num{font-weight:bold;font-size:14px;color:#7dd3fc;}
+.td-zodiac{font-size:16px;}
+.td-total{font-weight:bold;font-size:14px;background:#0d2010;}
+.td-total.v-high{color:#f97316;}
+.td-total.v-mid{color:#fbbf24;}
+.td-total.v-low{color:#6ee7b7;}
+.td-total.v-zero{color:#2a4060;background:#080f18;}
+
+/* 历史记录单元格 */
+.td-hist{
+  font-size:13px;cursor:pointer;position:relative;
+  min-width:50px;
+}
+.hist-val{
+  display:inline-block;padding:3px 8px;border-radius:5px;
+  background:#1a2f50;transition:all .15s;
+}
+.hist-val:hover{background:#2563eb33;}
+.hist-val.nonzero{color:#60a5fa;background:#0d2545;font-weight:bold;}
+.hist-empty{color:#1e3050;}
+
+/* 进度条 */
+.bar-cell{padding:6px 12px;}
+.bar-bg{height:10px;background:#0a1828;border-radius:5px;overflow:hidden;width:100%;min-width:80px;}
+.bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#2563eb,#f0c040);transition:width .4s;}
+
+/* 汇总行 */
+.sum-row td{
+  background:#0a2a14 !important;color:#4ade80;
+  font-weight:bold;font-size:15px;border-top:2px solid #22c55e;
+}
+
+/* 本次斤额汇总 */
+.round-summary{
+  flex:1;overflow-y:auto;min-height:0;
+  background:#0a1a10;border:1px solid #1e5030;border-radius:10px;
+  padding:10px 12px;
+}
+.round-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 0;border-bottom:1px solid #0f2f1a;font-size:13px;
+}
+.round-item:last-child{border-bottom:none;}
+.round-tag{color:#34d399;min-width:70px;font-weight:bold;font-size:12px;}
+.round-detail{color:#94a3b8;flex:1;padding:0 10px;font-size:12px;}
+.round-amount{color:#f0c040;font-weight:bold;font-size:16px;min-width:70px;text-align:right;}
+
+/* 历史条目列表 */
+.hist-list{
+  flex:1;overflow-y:auto;min-height:0;
+  background:#081420;border:1px solid #1e3050;border-radius:10px;
+  padding:10px 12px;
+}
+.hist-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;border-bottom:1px solid #0f1f35;font-size:12px;
+}
+.hist-item:last-child{border-bottom:none;}
+.hist-tag{color:#60a5fa;min-width:80px;font-size:12px;}
+.hist-nums{color:#94a3b8;flex:1;padding:0 10px;font-size:11px;}
+.hist-del{color:#f87171;cursor:pointer;padding:0 6px;font-size:18px;line-height:1;}
+.hist-del:hover{color:#ef4444;}
+
+/* 弹窗 */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:#000a;z-index:100;
+  align-items:center;justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:#0e1f35;border:2px solid #2563eb55;border-radius:14px;
+  padding:24px 28px;width:420px;max-width:95vw;
+}
+.modal h3{color:#f0c040;margin-bottom:14px;font-size:16px;}
+.modal textarea{
+  width:100%;height:160px;background:#0a1828;border:1.5px solid #2563eb55;
+  border-radius:8px;color:#e0e6f0;font-family:'Courier New',monospace;
+  font-size:13px;padding:10px;resize:none;outline:none;line-height:1.7;
+}
+.modal textarea:focus{border-color:#2563eb;}
+.modal-btns{display:flex;gap:10px;margin-top:14px;justify-content:flex-end;}
+
+/* 滚动条 */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:#0a1828;}
+::-webkit-scrollbar-thumb{background:#2563eb55;border-radius:4px;}
+
+/* ===== 策略控制面板 ===== */
+.strategy-panel{
+  background:linear-gradient(135deg,#0d1f3a,#0a2a1a);
+  border:2px solid #2563eb44;border-radius:14px;
+  padding:16px 20px;margin-bottom:20px;
+}
+.strategy-title{
+  font-size:15px;font-weight:bold;color:#f0c040;
+  letter-spacing:2px;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.strategy-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.stab{
+  padding:7px 18px;border:2px solid #334d6a;border-radius:20px;
+  cursor:pointer;font-size:12px;font-weight:bold;letter-spacing:1px;
+  transition:all .2s;background:#0a1828;color:#7ca8d0;
+}
+.stab:hover{border-color:#2563eb;color:#60a5fa;}
+.stab.active-aggressive{background:#7f1d1d;border-color:#ef4444;color:#fca5a5;}
+.stab.active-balanced{background:#78350f;border-color:#f59e0b;color:#fde68a;}
+.stab.active-conservative{background:#14532d;border-color:#22c55e;color:#86efac;}
+.stab.active-custom{background:#1e1b4b;border-color:#818cf8;color:#c7d2fe;}
+.stab.active-optimal{background:#be185d;border-color:#f472b6;color:#fce7f3;}
+
+/* 策略数据卡片区 */
+.strategy-cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.sc-card{
+  flex:1;min-width:120px;background:#0a1828;border-radius:10px;
+  padding:10px 14px;border:1px solid #1e3a60;text-align:center;
+}
+.sc-val{font-size:18px;font-weight:bold;line-height:1.2;}
+.sc-label{font-size:11px;color:#5a8ab0;margin-top:3px;}
+.sc-val.red{color:#f87171;}
+.sc-val.orange{color:#fb923c;}
+.sc-val.yellow{color:#fbbf24;}
+.sc-val.green{color:#4ade80;}
+.sc-val.blue{color:#60a5fa;}
+
+/* 紧急抛售号码列表 */
+.sell-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.sell-tag{
+  display:inline-flex;flex-direction:column;align-items:center;
+  padding:5px 10px;border-radius:8px;font-size:11px;cursor:default;
+  transition:transform .15s;
+}
+.sell-tag:hover{transform:scale(1.05);}
+.sell-tag.tier1{background:#7f1d1d;border:1px solid #ef4444;}
+.sell-tag.tier2{background:#78350f;border:1px solid #f59e0b;}
+.sell-tag.tier3{background:#14532d;border:1px solid #22c55e;}
+.sell-tag .stnum{font-size:13px;font-weight:bold;color:#fff;}
+.sell-tag .stamt{font-size:10px;color:#fca5a5;margin-top:1px;}
+
+/* ===== 盈亏预测区 ===== */
+.pnl-panel{
+  background:#0a0d1a;border:2px solid #1e3a60;border-radius:14px;
+  padding:16px 20px;margin-bottom:20px;
+}
+.pnl-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));
+  gap:5px;margin-top:10px;
+}
+.pnl-cell{
+  border-radius:8px;padding:6px 4px;text-align:center;
+  cursor:pointer;transition:transform .15s;border:1px solid transparent;
+}
+.pnl-cell:hover{transform:scale(1.06);z-index:1;}
+.pnl-cell.win{background:#0a2a10;border-color:#16a34a;}
+.pnl-cell.lose{background:#2a0808;border-color:#dc2626;}
+.pnl-cell.breakeven{background:#1a1a0a;border-color:#ca8a04;}
+.pnl-num{font-size:13px;font-weight:bold;color:#e0e6f0;}
+.pnl-zodiac{font-size:11px;color:#7ca8d0;margin:1px 0;}
+.pnl-val{font-size:11px;font-weight:bold;}
+.pnl-cell.win .pnl-val{color:#4ade80;}
+.pnl-cell.lose .pnl-val{color:#f87171;}
+.pnl-cell.breakeven .pnl-val{color:#facc15;}
+.pnl-legend{display:flex;gap:14px;font-size:11px;margin-top:8px;flex-wrap:wrap;}
+.pnl-legend span{display:flex;align-items:center;gap:4px;}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+/* 盈亏统计面板 */
+.pnl-stats-bar{
+  display:flex;gap:10px;margin:14px 0;padding:12px 16px;
+  background:#0a1420;border:1px solid #1e3a60;border-radius:10px;
+}
+.pnl-stat-item{
+  flex:1;text-align:center;padding:8px 10px;border-radius:8px;
+  border:1px solid transparent;
+}
+.pnl-stat-item.win{background:#0a2a10;border-color:#16a34a;}
+.pnl-stat-item.lose{background:#2a0808;border-color:#dc2626;}
+.pnl-stat-item.breakeven{background:#1a1a0a;border-color:#ca8a04;}
+.pnl-stat-item.total{background:#0a1a2a;border-color:#2563eb;}
+.pnl-stat-num{font-size:20px;font-weight:bold;line-height:1.2;}
+.pnl-stat-item.win .pnl-stat-num{color:#4ade80;}
+.pnl-stat-item.lose .pnl-stat-num{color:#f87171;}
+.pnl-stat-item.breakeven .pnl-stat-num{color:#facc15;}
+.pnl-stat-item.total .pnl-stat-num{color:#60a5fa;}
+.pnl-stat-label{font-size:11px;color:#94a3b8;margin-top:3px;}
+
+/* 自定义目标线输入 */
+.custom-input-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.custom-input-row input{
+  width:90px;padding:5px 10px;background:#0a1828;border:1px solid #2563eb55;
+  border-radius:6px;color:#e0e6f0;font-size:13px;outline:none;
+}
+.custom-input-row input:focus{border-color:#2563eb;}
+.custom-input-row label{font-size:12px;color:#7ca8d0;}
+
+/* 动画：单元格闪烁 */
+.cell-flash{animation:flash .4s ease;}
+
+@media(max-width:768px){
+  .main{flex-direction:column;height:auto;}
+  .left-panel{width:100%;min-width:unset;height:auto;}
+  .input-area{font-size:16px;}
+  .panel-title{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部 -->
+<div class="header">
+  <div>
+    <h1>🎯 动物号码实时累计工具 v3.0</h1>
+    <div class="sub">智能逗号分隔 · 重复号码斤额累加 · 自定义动物映射 · 汉字数字自动识别 · 波色/单双数展开 · 抛售策略分析</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-import" onclick="openBatchModal()">📋 批量导入</button>
+    <button class="btn btn-export" onclick="exportExcel()">⬇ 导出 Excel</button>
+    <button class="btn btn-clear" onclick="confirmClear()">🗑 清空数据</button>
+  </div>
+</div>
+
+<!-- 主体 -->
+<div class="main">
+
+  <!-- 左侧输入区 -->
+  <div class="left-panel">
+
+    <!-- 实时输入块（占左侧上半） -->
+    <div class="input-block">
+      <div class="panel-title">✏ 实时输入</div>
+      <textarea class="input-area" id="inputBox" autofocus
+        placeholder="直接输入，回车自动解析&#10;&#10;号码方式：03.15.20各30&#10;动物方式：鼠猴各号30 / 鼠猴各30&#10;个/各/各号/一个数/一个/每个 → 都等于「各」&#10;例：04 40 30个30 / 各号30 / 一个数30&#10;波色方式：红波各10 / 蓝波各5 / 绿波各20&#10;五行方式：金各10 / 木各5 / 水各20 / 火各10 / 土各15&#10;合数：合数单各10 / 合数双各5 / 单数各5 / 双数各10&#10;头尾方式：1头各10 / 2尾各5&#10;加号方式：38+ 500斤 → 38各500&#10;空格点：29 .50 斤 → 29各50&#10;号码+口语：01.07.34各压25&#10;包方式：龙。鼠。马。包10斤"></textarea>
+      <div class="parse-result" id="parseResult" style="flex-shrink:0;margin-top:6px;">
+        <span class="parse-idle">等待输入...</span>
+      </div>
+    </div>
+
+    <!-- 本次斤额汇总块（占左侧下半） -->
+    <div class="summary-block">
+      <div class="panel-title" style="flex-shrink:0;">💰 本次斤额汇总</div>
+      <div class="round-summary" id="roundSummary">
+        <div class="parse-idle" style="font-size:12px;padding:6px 0;">等待输入...</div>
+      </div>
+    </div>
+
+    <!-- 录入历史块 -->
+    <div class="history-block">
+      <div class="panel-title" style="flex-shrink:0;">📜 录入历史</div>
+      <div class="hist-list" id="histList">
+        <div class="parse-idle" style="font-size:12px;padding:6px 0;">暂无记录</div>
+      </div>
+    </div>
+
+    <!-- 统计卡片块 -->
+    <div class="stats-block">
+      <div class="stats-mini">
+        <div class="mini-card"><div class="mv" id="s-total">0</div><div class="ml">总斤额</div></div>
+        <div class="mini-card"><div class="mv" id="s-count">0</div><div class="ml">活跃号</div></div>
+        <div class="mini-card"><div class="mv" id="s-max">—</div><div class="ml">最大号</div></div>
+        <div class="mini-card"><div class="mv" id="s-rounds">0</div><div class="ml">录入次</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 右侧表格区 -->
+  <div class="right-panel">
+    <!-- 主统计表 -->
+    <div class="table-header" style="margin-top:24px;">
+      <h2>📊 1-49号 累计统计表</h2>
+      <input class="search-box" id="searchBox" placeholder="🔍 筛选号数/动物" oninput="filterTable()">
+    </div>
+    <table id="mainTable">
+      <thead>
+        <tr id="theadRow">
+          <th class="t-num">号数</th>
+          <th>动物</th>
+          <th class="t-total">累计</th>
+          <th>分布</th>
+          <th>第1次</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <!-- ===== 策略控制面板 ===== -->
+    <div class="strategy-panel" id="strategyPanel" style="margin-top:30px;">
+      <div class="strategy-title">⚙️ 抛售策略控制台</div>
+
+      <!-- 策略选择 -->
+      <div class="strategy-tabs">
+        <div class="stab" id="tab-optimal" onclick="setStrategy('optimal')">⭐ 最优策略</div>
+        <div class="stab" id="tab-aggressive" onclick="setStrategy('aggressive')">🔴 激进</div>
+        <div class="stab active-balanced" id="tab-balanced" onclick="setStrategy('balanced')">🟡 稳健</div>
+        <div class="stab" id="tab-conservative" onclick="setStrategy('conservative')">🟢 保守</div>
+        <div class="stab" id="tab-custom" onclick="setStrategy('custom')">🔵 自定义</div>
+      </div>
+
+      <!-- 自定义目标线输入（仅自定义模式显示） -->
+      <div class="custom-input-row" id="customRow" style="display:none;">
+        <label>目标线（每号不超过）：</label>
+        <input type="number" id="customTarget" value="1500" min="0" oninput="onCustomTargetChange()">
+        <label style="color:#5a8ab0;">斤</label>
+      </div>
+
+      <!-- 策略数据卡片 -->
+      <div class="strategy-cards">
+        <div class="sc-card">
+          <div class="sc-val blue" id="sc-total">—</div>
+          <div class="sc-label">总持仓（斤）</div>
+        </div>
+        <div class="sc-card">
+          <div class="sc-val red" id="sc-threshold">—</div>
+          <div class="sc-label">本策略目标线</div>
+        </div>
+        <div class="sc-card">
+          <div class="sc-val orange" id="sc-sellcount">—</div>
+          <div class="sc-label">需抛售号码数</div>
+        </div>
+        <div class="sc-card">
+          <div class="sc-val yellow" id="sc-selltotal">—</div>
+          <div class="sc-label">建议总抛量（斤）</div>
+        </div>
+        <div class="sc-card">
+          <div class="sc-val green" id="sc-aftertotal">—</div>
+          <div class="sc-label">抛后总持仓（斤）</div>
+        </div>
+        <div class="sc-card">
+          <div class="sc-val green" id="sc-losscount">—</div>
+          <div class="sc-label">抛后亏损号码数</div>
+        </div>
+      </div>
+
+      <!-- 需抛售号码标签列表 -->
+      <div style="font-size:12px;color:#7ca8d0;margin-bottom:6px;">📋 建议抛售号码（红=第一档 &gt;3000，橙=第二档 1500-3000，绿=第三档 &lt;1500）：</div>
+      <div class="sell-list" id="sellTagList"></div>
+
+      <!-- 文字总结 -->
+      <div style="margin-top:14px;padding:10px 14px;background:#0a1828;border:1px dashed #2563eb55;border-radius:8px;">
+        <div style="font-size:12px;color:#7ca8d0;margin-bottom:4px;">📝 抛售指令（可直接复制使用）：</div>
+        <div id="sellTextSummary" style="font-size:13px;color:#e0e6f0;line-height:1.8;font-family:'Courier New',monospace;">暂无抛售数据</div>
+      </div>
+    </div>
+
+    <!-- ===== 开号盈亏预测 ===== -->
+    <div class="pnl-panel" id="pnlPanel">
+      <div class="strategy-title">🎯 开号盈亏预测
+        <span style="font-size:11px;font-weight:normal;color:#5a8ab0;">按当前策略抛售后，若开出某号的实际盈亏</span>
+      </div>
+      <div class="pnl-legend">
+        <span><span class="leg-dot" style="background:#16a34a;"></span>绿色 = 盈利</span>
+        <span><span class="leg-dot" style="background:#dc2626;"></span>红色 = 亏损</span>
+        <span><span class="leg-dot" style="background:#ca8a04;"></span>黄色 = 临界</span>
+        <span style="color:#5a8ab0;">数字 = 开该号后净盈亏（正=盈，负=亏）</span>
+      </div>
+
+      <!-- 盈亏统计面板 -->
+      <div class="pnl-stats-bar" id="pnlStatsBar">
+        <div class="pnl-stat-item win">
+          <div class="pnl-stat-num" id="pnlWinCount">0</div>
+          <div class="pnl-stat-label">盈利次数</div>
+        </div>
+        <div class="pnl-stat-item lose">
+          <div class="pnl-stat-num" id="pnlLoseCount">0</div>
+          <div class="pnl-stat-label">亏损次数</div>
+        </div>
+        <div class="pnl-stat-item breakeven">
+          <div class="pnl-stat-num" id="pnlBreakCount">0</div>
+          <div class="pnl-stat-label">临界次数</div>
+        </div>
+        <div class="pnl-stat-item total">
+          <div class="pnl-stat-num" id="pnlTotalCount">0</div>
+          <div class="pnl-stat-label">总计</div>
+        </div>
+      </div>
+
+      <div class="pnl-grid" id="pnlGrid"></div>
+    </div>
+
+    <!-- 第二个统计表：财务分析表 -->
+    <div class="table-header" style="margin-top:10px;">
+      <h2>📈 财务分析统计表</h2>
+      <span style="font-size:11px;color:#64748b">所亏本斤 = 抛后剩余桌上本金 - 该号抛后剩余×47 (正数:盈利, 负数:亏损)</span>
+    </div>
+    <table id="financeTable">
+      <thead>
+        <tr id="financeTheadRow">
+          <th class="t-num">号数</th>
+          <th>动物</th>
+          <th class="t-total">累计</th>
+          <th style="min-width:70px;background:#4a0000;color:#fca5a5;font-size:11px">抛售斤额<br><span style="font-size:9px;color:#f87171">超出均值部分</span></th>
+          <th style="min-width:70px;background:#1a2030;color:#93c5fd;font-size:11px">抛后剩余<br><span style="font-size:9px;color:#7dd3fc">桌上本斤</span></th>
+          <th style="min-width:70px;background:#1a1030;color:#c084fc;font-size:11px">剩余47倍<br><span style="font-size:9px;color:#a78bfa">中奖可得</span></th>
+          <th style="min-width:70px;background:#301a1a;color:#f87171;font-size:11px">所亏本斤<br><span style="font-size:9px;color:#fca5a5">正数:亏损</span></th>
+        </tr>
+      </thead>
+      <tbody id="financeTbody"></tbody>
+    </table>
+
+    <!-- 实时抛售总结 -->
+    <div style="margin-top:12px;padding:12px;background:#0a1a10;border:1px solid #1e5030;border-radius:8px;">
+      <div style="color:#f0c040;font-size:13px;font-weight:bold;margin-bottom:6px;">💰 实时抛售总结</div>
+      <div id="sellSummary" style="color:#6ee7b7;font-size:13px;line-height:1.8;font-family:'Courier New',monospace;">暂无抛售数据</div>
+    </div>
+  </div>
+</div>
+
+<!-- 批量导入弹窗 -->
+<div class="modal-overlay" id="batchModal">
+  <div class="modal" style="width:520px;">
+    <h3>📋 批量导入历史数据</h3>
+
+    <!-- 文件拖拽区域 -->
+    <div id="dropZone" style="
+      border:2px dashed #2563eb88;border-radius:10px;
+      padding:18px 12px;text-align:center;cursor:pointer;
+      background:#0a1828;margin-bottom:10px;transition:all .2s;
+    "
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave(event)"
+      ondrop="handleFileDrop(event)"
+    >
+      <div style="font-size:28px;margin-bottom:6px;">📂</div>
+      <div style="color:#60a5fa;font-size:13px;font-weight:bold;">点击选择文件 或 拖拽文件到此处</div>
+      <div style="color:#475569;font-size:11px;margin-top:4px;">支持 .txt · .csv · .xlsx 格式</div>
+      <div id="fileStatus" style="color:#34d399;font-size:12px;margin-top:6px;min-height:16px;"></div>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,.csv,.xlsx,.xls" style="display:none" onchange="handleFileSelect(event)">
+
+    <!-- 手动文本区 -->
+    <div style="color:#475569;font-size:11px;margin-bottom:4px;">或直接粘贴文本：</div>
+    <textarea id="batchInput" placeholder="粘贴多行数据，每行格式：&#10;鼠猴 22.25.27各20&#10;狗蛇 09 21 45各10斤&#10;03.15.20各30&#10;07/22/44各50&#10;..."></textarea>
+
+    <div class="modal-btns">
+      <button class="btn" style="background:#334155;color:#fff" onclick="clearBatchInput()">清空</button>
+      <button class="btn" style="background:#334155;color:#fff" onclick="closeBatchModal()">取消</button>
+      <button class="btn btn-import" onclick="doBatchImport()">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// =============================================
+//  动物 → 号数映射（完整表）
+// =============================================
+// 根据用户提供的表格：马1蛇2龙3兔4虎5牛6鼠7猪8狗9鸡10猴11羊12...
+const ZODIAC = {
+  1:'马', 2:'蛇', 3:'龙', 4:'兔', 5:'虎', 6:'牛', 7:'鼠', 8:'猪', 9:'狗', 10:'鸡',
+  11:'猴', 12:'羊', 13:'马', 14:'蛇', 15:'龙', 16:'兔', 17:'虎', 18:'牛', 19:'鼠', 20:'猪',
+  21:'狗', 22:'鸡', 23:'猴', 24:'羊', 25:'马', 26:'蛇', 27:'龙', 28:'兔', 29:'虎', 30:'牛',
+  31:'鼠', 32:'猪', 33:'狗', 34:'鸡', 35:'猴', 36:'羊', 37:'马', 38:'蛇', 39:'龙', 40:'兔',
+  41:'虎', 42:'牛', 43:'鼠', 44:'猪', 45:'狗', 46:'鸡', 47:'猴', 48:'羊', 49:'马'
+};
+
+// 动物名 → 对应号数列表
+const ZODIAC_NUMS = {};
+for (let n = 1; n <= 49; n++) {
+  const z = ZODIAC[n];
+  if (!ZODIAC_NUMS[z]) ZODIAC_NUMS[z] = [];
+  ZODIAC_NUMS[z].push(n);
+}
+// ZODIAC_NUMS: {鼠:[1,13,25,37,49], 牛:[2,14,26,38], ...}
+
+// 十二动物名列表（用于正则匹配）
+const ZODIAC_NAMES = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const ZODIAC_RE = new RegExp(`[${ZODIAC_NAMES.join('')}]`, 'g');
+
+// 需要忽略的单位词（包括"各"后面的单位词）
+const UNIT_WORDS = /[斤元块个份条只]/g;
+// 匹配"各"或"各号"后面的单位词，如"各斤"、"各号斤"、"各元"等
+const UNIT_AFTER_GE = /各号?[斤元块个份条只]/g;
+
+// =============================================
+//  波色号码映射（用户指定）
+// =============================================
+const WAVE_NUMS = {
+  '红波': '01.02.07.08.12.13.18.19.23.24.29.30.34.35.40.45.46',
+  '蓝波': '03.04.09.10.14.15.20.25.26.31.36.37.41.42.47.48',
+  '兰波': '03.04.09.10.14.15.20.25.26.31.36.37.41.42.47.48',
+  '绿波': '05.06.11.16.17.21.22.27.28.32.33.38.39.43.44.49'
+};
+
+// 双数号码列表（合数双）
+const EVEN_NUMS = '02.04.06.08.11.13.15.17.19.20.22.24.26.28.31.33.35.37.39.40.42.44.46.48';
+// 单数号码列表（合数单）
+const ODD_NUMS  = '01.03.05.07.09.10.12.14.16.18.21.23.25.27.29.30.32.34.36.38.41.43.45.47.49';
+
+// =============================================
+//  五行对照号码映射
+// =============================================
+const WUXING_NUMS = {
+  '金': '04.05.12.13.26.27.34.35.42.43',
+  '木': '08.09.16.17.24.25.38.39.46.47',
+  '水': '01.14.15.22.23.30.31.44.45',
+  '火': '02.03.10.11.18.19.32.33.40.41.48.49',
+  '土': '06.07.20.21.28.29.36.37'
+};
+
+// =============================================
+//  头尾号码映射
+// =============================================
+// X头：首位数字为X的号码（0头=01-09，1头=10-19，...，4头=40-49）
+function getHeadNums(h) {
+  const nums = [];
+  if (h === 0) {
+    for (let i = 1; i <= 9; i++) nums.push(String(i).padStart(2, '0'));
+  } else {
+    for (let i = 0; i <= 9; i++) {
+      const n = h * 10 + i;
+      if (n >= 1 && n <= 49) nums.push(String(n).padStart(2, '0'));
+    }
+  }
+  return nums.join('.');
+}
+// X尾：末位数字为X的号码（0尾=10,20,30,40；1尾=01,11,21,31,41；...；9尾=09,19,29,39,49）
+function getTailNums(t) {
+  const nums = [];
+  for (let prefix = 0; prefix <= 4; prefix++) {
+    const n = prefix * 10 + t;
+    if (n >= 1 && n <= 49) nums.push(String(n).padStart(2, '0'));
+  }
+  return nums.join('.');
+}
+
+// 预生成头尾映射（0~4头，0~9尾）
+const HEAD_NUMS = {};
+for (let h = 0; h <= 4; h++) HEAD_NUMS[h] = getHeadNums(h);
+const TAIL_NUMS = {};
+for (let t = 0; t <= 9; t++) TAIL_NUMS[t] = getTailNums(t);
+
+// =============================================
+//  语义预处理：在进入正式解析前统一替换关键词
+// =============================================
+function semanticPreprocess(line) {
+  // 1. 错别字兼容：免→兔
+  line = line.replace(/免/g, '兔');
+
+  // 2. "压" 字处理：各压/压各 → 各，"号码压X" 中的压去掉
+  line = line.replace(/各\s*压/g, '各').replace(/压\s*各/g, '各');
+  // 独立的"压"字在数字前也去掉（如"34.46各压25"→"34.46各25"）
+  line = line.replace(/压(?=\d)/g, '');
+
+  // 3. 同义关键词统一为"各"：
+  //    "个"、"各号"、"一个数"、"一个号码"、"每个号"、"一个"、"每个" → 各
+  //    格式：[关键词]数字 → 各数字（避免变成"各各X"）
+  line = line.replace(/(?:各号|一个数|一个号码|每个号|一个|每个)\s*(\d+)/g, '各$1');
+  // 剩余单独的无数字版本也替换为"各"
+  line = line.replace(/(?:各号|一个数|一个号码|每个号|一个|每个)/g, '各');
+  // "各号"后面直接跟数字（无空格）的情况，如"各号30"
+  line = line.replace(/各号(\d+)/g, '各$1');
+  // "个"字：号码后+数字+个 → 号码各数字（如"04 40 30个30" → "04 40 30各30"）
+  //    条件：前面有数字串（号码），后面紧跟数字+"个"，"个"转为"各"
+  line = line.replace(/(\d+)\s+(\d+)\s*个\b/g, '$1各$2');
+  // "各N个"格式也转为"各N"（如"各30个" → "各30"）
+  line = line.replace(/各(\d+)\s*个\b/g, '各$1');
+
+  // 4. 特殊分隔符处理：
+  //    "29 .50 斤" / "38+ 500斤" / "29.50斤" / "38+500斤" 等
+  //    格式：号码 [空格] [./+/斜杠] [空格] 金额 [单位]
+  //    → 号码各金额
+  //
+  //    这类情况的特征：一个1~49的数字后跟 空格/点/加号/斜杠 后面紧跟另一个数字+斤/元/块
+  //    需要把分隔符替换成"各"
+  //
+  //    注意：号码列表"04 40 30..."之间是空格分隔的多个号码，
+  //    只有当后面跟着斤/元/块/个等单位时，最后那个数字才是金额
+  //
+  //    规则：只在有明确单位词（斤/元/块）时才替换，避免误匹配号码列表
+  //    "数字 +/斜杠 数字 斤" → 数字各数字（斤保留给后续处理）
+  line = line.replace(/(\d+)\s*[+\/]\s*(\d+)(\s*[斤元块])/g, '$1各$2$3');
+  // 对于 "数字 空格.空格 数字 斤" 格式（空格+点+数字），也需处理
+  // 例：29 .50 斤 → 29各50斤
+  line = line.replace(/(\d+)\s+\.\s*(\d+)(\s*[斤元块])/g, '$1各$2$3');
+
+  // 5. 波色展开：红波/蓝波/兰波/绿波
+  for (const [wave, nums] of Object.entries(WAVE_NUMS)) {
+    // 匹配波色词后跟"各?[数字]"，如"红波各10"或"红波10"
+    const waveRe = new RegExp(wave + '\\s*各?\\s*(\\d+)', 'g');
+    line = line.replace(waveRe, (m, amt) => nums + '各' + amt);
+    // 单独出现波色词（后面没跟数字，可能是"红波"独立），不做处理
+  }
+
+  // 5b. 五行展开：金/木/水/火/土
+  for (const [wx, nums] of Object.entries(WUXING_NUMS)) {
+    // 匹配五行词后跟"各?[数字]"，如"金各10"或"金10"
+    // 注意：需要避免匹配到其他含这些字的词（如"金牛"中的"金"）
+    // 使用前后边界：前面不能是动物名，后面直接跟数字或"各"
+    const wxRe = new RegExp('(?<![鼠牛虎兔龙蛇马羊猴鸡狗猪])' + wx + '\\s*各?\\s*(\\d+)', 'g');
+    line = line.replace(wxRe, (m, amt) => nums + '各' + amt);
+  }
+
+  // 6. 双数/单数展开
+  //    "双数各10" / "双数10" → EVEN_NUMS各10
+  //    "单数各5"  / "单数5"  → ODD_NUMS各5
+  //    "合数双各10" / "合数双10" → EVEN_NUMS各10
+  //    "合数单各5"  / "合数单5"  → ODD_NUMS各5
+  line = line.replace(/合数双\s*各?\s*(\d+)/g, (m, amt) => EVEN_NUMS + '各' + amt);
+  line = line.replace(/合数单\s*各?\s*(\d+)/g, (m, amt) => ODD_NUMS  + '各' + amt);
+  line = line.replace(/双数\s*各?\s*(\d+)/g, (m, amt) => EVEN_NUMS + '各' + amt);
+  line = line.replace(/单数\s*各?\s*(\d+)/g, (m, amt) => ODD_NUMS  + '各' + amt);
+
+  // 7. 头展开：X头各N → 对应号码各N
+  //    支持：0头/1头/2头/3头/4头
+  //    格式：X头各?N 或 X头N
+  line = line.replace(/([0-4])\s*头\s*各?\s*(\d+)/g, (m, h, amt) => {
+    const nums = HEAD_NUMS[parseInt(h)];
+    return nums ? nums + '各' + amt : m;
+  });
+
+  // 8. 尾展开：X尾各N → 对应号码各N
+  //    支持：0尾~9尾
+  //    格式：X尾各?N 或 X尾N
+  line = line.replace(/([0-9])\s*尾\s*各?\s*(\d+)/g, (m, t, amt) => {
+    const nums = TAIL_NUMS[parseInt(t)];
+    return nums ? nums + '各' + amt : m;
+  });
+
+  return line;
+}
+
+// =============================================
+//  汉字数字转阿拉伯数字（仅支持整十/个位/组合，最大99）
+// =============================================
+const CN_NUM_MAP = {
+  '零':0,'一':1,'二':2,'三':3,'四':4,'五':5,
+  '六':6,'七':7,'八':8,'九':9,'十':10,
+  '两':2,'廿':20,'卅':30,'半':5
+};
+function cnNumToInt(str) {
+  str = str.trim();
+  if (!str) return NaN;
+  // 纯阿拉伯数字直接返回
+  if (/^\d+$/.test(str)) return parseInt(str);
+  let val = 0;
+  // "十X" → 10+X，"X十" → X*10，"X十Y" → X*10+Y，"十" → 10
+  if (/^[一二三四五六七八九]?十[一二三四五六七八九]?$/.test(str)) {
+    const parts = str.match(/^([一二三四五六七八九]?)十([一二三四五六七八九]?)$/);
+    const tens = parts[1] ? (CN_NUM_MAP[parts[1]] || 0) : 1;
+    const ones = parts[2] ? (CN_NUM_MAP[parts[2]] || 0) : 0;
+    val = tens * 10 + ones;
+    return val > 0 ? val : NaN;
+  }
+  // 单字：五、三、二、十等
+  if (str.length === 1 && CN_NUM_MAP[str] !== undefined) {
+    return CN_NUM_MAP[str];
+  }
+  return NaN;
+}
+
+/**
+ * 将一行文本中"各/号/包"后紧跟的汉字数字替换为阿拉伯数字
+ * 例：34各三十 → 34各30
+ *     蛇各十五米 → 蛇各15米
+ *     包羊各五米 → 包羊各5米
+ *     20.32各二十 → 20.32各20
+ */
+function convertCnNumbers(line) {
+  // 匹配"各号?", "号", "包" 后跟汉字数字（可带单位米/斤/元）
+  // 汉字数字模式：可选前缀[一二三四五六七八九]十[一二三四五六七八九]，或单字
+  const cnPat = /([各号包]号?)\s*([零一二三四五六七八九十两廿卅半]+)/g;
+  return line.replace(cnPat, (match, prefix, cnStr) => {
+    const num = cnNumToInt(cnStr);
+    if (!isNaN(num) && num > 0) {
+      return prefix + num;
+    }
+    return match; // 无法转换则保持原样
+  });
+}
+
+// =============================================
+//  数据核心
+// =============================================
+// 初始历史数据（清空）
+const INIT_DATA = {};
+
+let historyByNum = {};
+let roundList = [];
+let roundCounter = 0;
+
+function initData() {
+  const entries = [];
+  for (let n = 1; n <= 49; n++) {
+    const v = INIT_DATA[n] || 0;
+    if (v > 0) {
+      if (!historyByNum[n]) historyByNum[n] = [];
+      historyByNum[n].push({ round: 0, amount: v, label: '历史' });
+      entries.push({ num: n, amount: v });
+    }
+  }
+  roundList.unshift({ round: 0, label: '历史导入', entries });
+}
+
+// =============================================
+//  核心解析引擎 v2（支持动物关键词 + 忽略单位）
+// =============================================
+
+/**
+ * 解析一行文本，返回 [{num, amount, fromZodiac?}]
+ *
+ * 支持：
+ *   "鼠猴各号30"           → 鼠(1,13,25,37,49) + 猴(9,21,33,45) 各+30
+ *   "鼠 22.25各20"         → 鼠所有号 + 22 + 25 各+20
+ *   "狗蛇 09 21 45各10斤"  → 狗(11,23,35,47)+蛇(6,18,30,42)+9+21+45 各+10
+ *   "22.25.27.46 07 31各20" → 普通号码解析
+ *   一行多段：用逗号/分号分隔，各段独立解析
+ *   一行多指令："马牛各10鼠猴各20" → 马牛+10, 鼠猴+20
+ *   混合格式："33.34，20 45各10" → 33,34,20,45 各+10
+ *   "猪 牛各10元 兔猪各5 共40 马各5共25 牛猴狗各5共60" → 多段指令解析
+ *   "龙。鼠。马。包10斤" → 龙。鼠。马。替换为 龙。鼠。马。各号10 → 按动物+10处理
+ */
+// =============================================
+//  减法解析：返回 [{num, amount(负数)}]
+//  支持格式：
+//    05号减100 / 05号-100 / 05减100
+//    龙减50 / 龙-50斤
+//    05.12.20减100 / 05 12 20减100
+//    龙鼠各减50 / 龙鼠减50
+// =============================================
+function parseMinusLine(line) {
+  line = semanticPreprocess(line); // 语义预处理
+  line = convertCnNumbers(line); // 汉字数字转换
+  const animalListStr = ZODIAC_NAMES.join('');
+
+  // 统一"减"字和中文负号→"-"，方便正则
+  let s = line
+    .replace(/[减－]/g, '-')
+    .replace(/[斤元块个份条只]/g, '')
+    .trim();
+
+  // 匹配格式：[动物/号码前缀][各?][号?][-数字]
+  // 例：龙鼠各-50 | 05 12 20-100 | 05号-100
+  const minusMatch = s.match(new RegExp(
+    `^([${animalListStr}。\\d\\s\\.，,；;号各/\\-]*)各?号?\\-(\\d+)\\s*$`
+  ));
+  if (!minusMatch) return null;
+
+  const prefix = minusMatch[1].trim();
+  const amount = parseInt(minusMatch[2]);
+  if (isNaN(amount) || amount <= 0) return null;
+
+  const entries = [];
+
+  // --- 提取动物关键词 ---
+  const zodiacMatches = prefix.match(ZODIAC_RE) || [];
+  for (const z of zodiacMatches) {
+    const zNums = ZODIAC_NUMS[z] || [];
+    zNums.forEach(n => entries.push({ num: n, amount: -amount, fromZodiac: z }));
+  }
+
+  // --- 提取数字号码 ---
+  const withoutZodiac = prefix.replace(ZODIAC_RE, ' ');
+  const numMatches = withoutZodiac.match(/\d+/g) || [];
+  for (const p of numMatches) {
+    const n = parseInt(p);
+    if (!isNaN(n) && n >= 1 && n <= 49) {
+      entries.push({ num: n, amount: -amount, fromZodiac: null });
+    }
+  }
+
+  return entries.length > 0 ? entries : null;
+}
+
+function parseLine(line) {
+  line = semanticPreprocess(line); // 语义预处理
+  line = convertCnNumbers(line); // 汉字数字转换
+  // -1. 先检测是否为减法指令
+  const minusEntries = parseMinusLine(line);
+  if (minusEntries) return minusEntries;
+
+  // 0. 先处理"包"字开头的指令,如"龙。鼠。马。包10斤"
+  // 匹配模式: "动物。动物。...包数字斤"（支持逗号后跟其他指令）
+  const animalListStr = ZODIAC_NAMES.join('');
+  // 改进正则：使用非贪婪匹配，并确保匹配到动物名和。符号
+  const baoMatch = line.match(new RegExp(`([${animalListStr}。]+)包\\s*(\\d+)\\s*斤?`, ''));
+  if (baoMatch) {
+    const animalStr = baoMatch[1]; // "龙。鼠。马。"
+    const amount = parseInt(baoMatch[2]);
+    const beforeBao = baoMatch[0]; // 完整的"龙。鼠。马。包10斤"部分
+
+    if (amount % 5 === 0) {
+      // 提取"包"指令后面的剩余部分
+      const afterBao = line.slice(beforeBao.length).trim();
+
+      // 将"龙。鼠。马。包10斤"替换为"龙。鼠。马。各号10"
+      // 然后与后面的指令拼接
+      const convertedLine = animalStr + '各号' + amount;
+
+      // 如果后面还有内容（如",19.45.49..."），则拼接后递归解析
+      let fullLine = convertedLine;
+      if (afterBao) {
+        // 移除逗号、分号等前导符号
+        const cleanAfter = afterBao.replace(/^[，,；;]\s*/, '');
+        if (cleanAfter) {
+          fullLine = convertedLine + ' ' + cleanAfter;
+        }
+      }
+
+      return parseLine(fullLine);
+    }
+  }
+
+  // 1. 先去除"各"后面的单位词（如"各斤"、"各号斤"）
+  line = line.replace(UNIT_AFTER_GE, '各');
+  // 2. 去除其他位置的单位词
+  line = line.replace(UNIT_WORDS, '').trim();
+  if (!line) return [];
+
+  // 3. 先将所有分隔符统一标准化：
+  // 逗号、句号、分号、点号、减号、斜杠都转为空格
+  // 注意：逗号前后的数字应该属于同一个指令
+  line = line
+    .replace(/[，。；]/g, ' ')   // 中文标点转为空格
+    .replace(/[\.\-\/]/g, ' '); // 点号减号斜杠转为空格
+
+  // 4. 查找所有"各号数字"或"号数字"指令（使用捕获组获取斤额）
+  // 必须包含"各"或"号"之一,不能只匹配纯数字
+  // 在关键字前忽略空格、点号等符号，"各"和"号"之间也忽略空格
+  const eachMatches = Array.from(line.matchAll(/[\s.\-]*?各\s*号?\s*\d+|[\s.\-]*?号\s*\d+/g)).map(m => {
+    const num = m[0].match(/\d+/)[0];
+    return { 0: m[0], 1: num, index: m.index };
+  });
+
+  if (eachMatches.length === 0) {
+    return [];
+  }
+
+  // 5. 处理每个"各号"指令
+  let results = [];
+
+  for (let i = 0; i < eachMatches.length; i++) {
+    const match = eachMatches[i];
+    const matchStart = match.index;
+    const matchEnd = matchStart + match[0].length;
+
+    // 确定该指令的号码前缀范围
+    let prefixStart = 0;
+    if (i > 0) {
+      // 从前一个匹配结束后开始
+      const prevMatchEnd = eachMatches[i-1].index + eachMatches[i-1][0].length;
+      prefixStart = prevMatchEnd;
+    }
+
+    // 提取前缀（号码和动物）
+    let prefix = line.slice(prefixStart, matchStart).trim();
+
+    // 去掉"共X"后缀 - 只在行末尾匹配
+    const lastSpaceIndex = prefix.lastIndexOf(' ');
+    if (lastSpaceIndex !== -1) {
+      const lastWord = prefix.slice(lastSpaceIndex + 1);
+      if (/^共\d+$/.test(lastWord)) {
+        prefix = prefix.slice(0, lastSpaceIndex).trim();
+      }
+    }
+
+    const amount = parseInt(match[1]);
+
+    if (amount % 5 === 0) {
+      // 解析这个指令
+      const entries = parsePrefixAndAmount(prefix, amount);
+      results = results.concat(entries);
+    }
+  }
+
+  // 6. 返回所有条目（不合并重复号码，斤额累加在显示时处理）
+  return results;
+}
+
+// 解析前缀（动物+号码）和斤额
+function parsePrefixAndAmount(prefix, amount) {
+  const numCounts = [];
+  
+  // --- 提取动物关键词 ---
+  const zodiacMatches = prefix.match(ZODIAC_RE) || [];
+  for (const z of zodiacMatches) {
+    const zNums = ZODIAC_NUMS[z] || [];
+    zNums.forEach(n => numCounts.push({ num: n, fromZodiac: true, zodiac: z }));
+  }
+
+  // --- 提取数字号码 ---
+  const withoutZodiac = prefix.replace(ZODIAC_RE, ' ');
+  const numMatches = withoutZodiac.match(/\d+/g) || [];
+  for (const p of numMatches) {
+    const n = parseInt(p.trim());
+    if (!isNaN(n) && n >= 1 && n <= 49) {
+      numCounts.push({ num: n, fromZodiac: false, zodiac: null });
+    }
+  }
+  
+  // 为每个号码创建条目
+  return numCounts.map(item => ({
+    num: item.num,
+    amount: amount,
+    fromZodiac: item.fromZodiac ? item.zodiac : null
+  }));
+}
+
+// 合并相同号码的斤额
+function mergeEntries(entries) {
+  const merged = {};
+  for (const entry of entries) {
+    const num = entry.num;
+    if (!merged[num]) {
+      merged[num] = { num: num, amount: 0, fromZodiac: entry.fromZodiac };
+    }
+    merged[num].amount += entry.amount;
+    // 如果来自动物，保留动物信息
+    if (entry.fromZodiac) {
+      merged[num].fromZodiac = entry.fromZodiac;
+    }
+  }
+  return Object.values(merged);
+}
+
+/**
+ * 解析单个段落，支持一行内多个"各号X"指令
+ * 例如："马牛各10鼠猴各20" → 解析为两组数据（同一行内重复号码斤额累加）
+ * 
+ * 重复号码处理：同一指令内，动物展开的号码和输入的数字号码重复时，斤额累加
+ * 例："龙 04 05 13 27 34 各号20" → 龙(3,15,27,39) + 4,5,13,27,34
+ *     27出现两次（来自龙和输入），斤额 = 20 + 20 = 40
+ */
+function parseSegmentMulti(seg) {
+  // 先收集所有指令，然后统一合并
+  const commandList = []; // [{ amount, numAmounts: Map<num, count> }]
+  let remaining = seg;
+
+  // 循环查找所有"各号?数字"或"号数字"模式
+  // 忽略"各"和"号"之间的空格
+  while (remaining.length > 0) {
+    const eachMatch = remaining.match(/各\s*号?\s*\d+|号\s*\d+/);
+    if (!eachMatch) break;
+
+    const amount = parseInt(eachMatch[0].match(/\d+/)[0]);
+    const matchIndex = remaining.indexOf(eachMatch[0]);
+    const prefix = remaining.slice(0, matchIndex);
+
+    if (amount % 5 === 0) {
+      // 使用数组记录每个号码出现的次数（支持重复累加）
+      const numCounts = [];
+      const zodiacs = [];
+
+      // --- 提取动物关键词 ---
+      const zodiacMatches = prefix.match(ZODIAC_RE) || [];
+      for (const z of zodiacMatches) {
+        zodiacs.push(z);
+        const zNums = ZODIAC_NUMS[z] || [];
+        zNums.forEach(n => numCounts.push({ num: n, fromZodiac: true, zodiac: z }));
+      }
+
+      // --- 提取数字号码 ---
+      const withoutZodiac = prefix.replace(ZODIAC_RE, ' ');
+      const numMatches = withoutZodiac.match(/\d+/g) || [];
+      for (const p of numMatches) {
+        const n = parseInt(p.trim());
+        if (!isNaN(n) && n >= 1 && n <= 49) {
+          numCounts.push({ num: n, fromZodiac: false, zodiac: null });
+        }
+      }
+
+      commandList.push({ amount, numCounts, zodiacs });
+    }
+
+    remaining = remaining.slice(matchIndex + eachMatch[0].length);
+  }
+
+  // 合并：相同号码的斤额累加（重复几次就加几次）
+  const mergedByNum = {};
+  for (const cmd of commandList) {
+    for (const { num, fromZodiac, zodiac } of cmd.numCounts) {
+      if (!mergedByNum[num]) {
+        mergedByNum[num] = { amount: 0, fromZodiac: false, zodiac: null };
+      }
+      mergedByNum[num].amount += cmd.amount; // 每次出现都累加斤额
+      if (fromZodiac) {
+        mergedByNum[num].fromZodiac = true;
+        mergedByNum[num].zodiac = zodiac;
+      }
+    }
+  }
+
+  // 转换为结果数组
+  return Object.entries(mergedByNum).map(([num, data]) => ({
+    num: parseInt(num),
+    amount: data.amount,
+    fromZodiac: data.fromZodiac ? (data.zodiac || ZODIAC[parseInt(num)]) : null
+  }));
+}
+
+/**
+ * 解析单个段落（兼容旧版本，只解析第一个"各号X"）
+ * 一个段落格式：[动物名*][号码列表] 各号? 斤额
+ */
+function parseSegment(seg) {
+  // 匹配"各号?数字"或"号数字"，找到斤额位置
+  // 忽略"各"和"号"之间的空格
+  const eachMatch = seg.match(/各\s*号?\s*\d+|号\s*\d+/);
+  if (!eachMatch) return [];
+
+  const amount = parseInt(eachMatch[0].match(/\d+/)[0]);
+  if (amount % 5 !== 0) return []; // 非5倍数忽略
+
+  // 取"各"之前的部分
+  const prefix = seg.slice(0, seg.indexOf(eachMatch[0]));
+
+  const nums = new Set(); // 用Set自动去重
+
+  // --- 提取动物关键词 ---
+  const zodiacs = prefix.match(ZODIAC_RE) || [];
+  for (const z of zodiacs) {
+    const zNums = ZODIAC_NUMS[z] || [];
+    for (const n of zNums) nums.add(n);
+  }
+
+  // --- 提取数字号码（去掉动物后剩余部分）---
+  const withoutZodiac = prefix.replace(ZODIAC_RE, ' ');
+  // 用更精确的方式匹配数字：连续的数字字符
+  const numMatches = withoutZodiac.match(/\d+/g) || [];
+  for (const p of numMatches) {
+    const n = parseInt(p.trim());
+    if (!isNaN(n) && n >= 1 && n <= 49) nums.add(n);
+  }
+
+  // 转换为结果数组
+  return Array.from(nums).map(num => ({
+    num,
+    amount,
+    fromZodiac: zodiacs.length > 0 && (ZODIAC_NUMS[ZODIAC[num]] || []).some(z => zodiacs.includes(ZODIAC[num]))
+      ? ZODIAC[num] : null
+  }));
+}
+
+/**
+ * 解析预览：返回结构化信息用于展示（支持一行多指令）
+ */
+function parseLineDetailed(line) {
+  line = semanticPreprocess(line); // 语义预处理
+  line = convertCnNumbers(line); // 汉字数字转换
+  // -1. 先检测是否为减法指令
+  const minusEntries = parseMinusLine(line);
+  if (minusEntries && minusEntries.length > 0) {
+    const amount = Math.abs(minusEntries[0].amount);
+    const allNums = [...new Set(minusEntries.map(e => e.num))].sort((a,b) => a-b);
+    const zodiacs = [...new Set(minusEntries.filter(e => e.fromZodiac).map(e => e.fromZodiac))];
+    return {
+      isMinusOp: true,
+      segments: [{
+        raw: line,
+        amount: -amount,
+        isValid: true,
+        zodiacs,
+        zodiacExpand: zodiacs.map(z => ({ zodiac: z, nums: ZODIAC_NUMS[z] || [] })),
+        directNums: minusEntries.filter(e => !e.fromZodiac).map(e => e.num),
+        allNums
+      }]
+    };
+  }
+
+  // 0. 先处理"包"字开头的指令,如"龙。鼠。马。包10斤"
+  const animalListStr = ZODIAC_NAMES.join('');
+  // 改进正则：使用非贪婪匹配，并确保匹配到动物名和。符号
+  const baoMatch = line.match(new RegExp(`([${animalListStr}。]+)包\\s*(\\d+)\\s*斤?`, ''));
+  if (baoMatch) {
+    const animalStr = baoMatch[1]; // "龙。鼠。马。"
+    const amount = parseInt(baoMatch[2]);
+    const beforeBao = baoMatch[0]; // 完整的"龙。鼠。马。包10斤"部分
+
+    if (amount % 5 === 0) {
+      // 提取"包"指令后面的剩余部分
+      const afterBao = line.slice(beforeBao.length).trim();
+
+      // 将"龙。鼠。马。包10斤"替换为"龙。鼠。马。各号10"
+      const convertedLine = animalStr + '各号' + amount;
+
+      // 如果后面还有内容（如",19.45.49..."），则拼接后递归解析
+      let fullLine = convertedLine;
+      if (afterBao) {
+        // 移除逗号、分号等前导符号
+        const cleanAfter = afterBao.replace(/^[，,；;]\s*/, '');
+        if (cleanAfter) {
+          fullLine = convertedLine + ' ' + cleanAfter;
+        }
+      }
+
+      return parseLineDetailed(fullLine);
+    }
+  }
+
+  // 1. 先去除"各"后面的单位词，再去除其他单位词，统一分隔符
+  line = line
+    .replace(UNIT_AFTER_GE, '各')
+    .replace(UNIT_WORDS, '')
+    .replace(/[，。；]/g, ' ')   // 中文标点转为空格
+    .replace(/[\.\-\/]/g, ' ')  // 点号减号斜杠转为空格
+    .trim();
+  if (!line) return { segments: [] };
+
+  const result = { segments: [] };
+
+  // 2. 查找所有"各号数字"或"号数字"指令（使用捕获组获取斤额）
+  // 必须包含"各"或"号"之一,不能只匹配纯数字
+  // 在关键字前忽略空格、点号等符号，"各"和"号"之间也忽略空格
+  const eachMatches = Array.from(line.matchAll(/[\s.\-]*?各\s*号?\s*\d+|[\s.\-]*?号\s*\d+/g)).map(m => {
+    const num = m[0].match(/\d+/)[0];
+    return { 0: m[0], 1: num, index: m.index };
+  });
+  
+  for (let i = 0; i < eachMatches.length; i++) {
+    const match = eachMatches[i];
+    const matchStart = match.index;
+    
+    // 确定该指令的号码前缀范围
+    let prefixStart = 0;
+    if (i > 0) {
+      const prevMatchEnd = eachMatches[i-1].index + eachMatches[i-1][0].length;
+      prefixStart = prevMatchEnd;
+    }
+    
+    // 提取前缀
+    const prefix = line.slice(prefixStart, matchStart).trim();
+    const amount = parseInt(match[1]);
+    const isValid = amount % 5 === 0;
+
+    // 找动物（使用数组保留重复）
+    const zodiacs = prefix.match(ZODIAC_RE) || [];
+    const zodiacExpand = [];
+    const allNums = []; // 使用数组而不是Set，保留重复
+    for (const z of zodiacs) {
+      const zNums = ZODIAC_NUMS[z] || [];
+      zodiacExpand.push({ zodiac: z, nums: zNums });
+      zNums.forEach(n => allNums.push(n));
+    }
+
+    // 找数字
+    const withoutZodiac = prefix.replace(ZODIAC_RE, ' ');
+    const directNums = [];
+    const numMatches = withoutZodiac.match(/\d+/g) || [];
+    for (const p of numMatches) {
+      const n = parseInt(p.trim());
+      if (!isNaN(n) && n >= 1 && n <= 49) {
+        directNums.push(n);
+        allNums.push(n);
+      }
+    }
+
+    result.segments.push({
+      raw: prefix + match[0],
+      amount,
+      isValid,
+      zodiacs,
+      zodiacExpand,
+      directNums,
+      allNums: allNums.sort((a,b)=>a-b)
+    });
+  }
+  return result;
+}
+
+// =============================================
+//  合并同号 & 计算累计
+// =============================================
+function getTotals() {
+  const t = {};
+  for (let n = 1; n <= 49; n++) {
+    const arr = historyByNum[n] || [];
+    t[n] = arr.reduce((s, x) => s + x.amount, 0);
+  }
+  return t;
+}
+
+function getNumTotal(n) {
+  return (historyByNum[n] || []).reduce((s, x) => s + x.amount, 0);
+}
+
+// =============================================
+//  表格渲染（主表 + 财务分析表）
+// =============================================
+function buildTable() {
+  const totals = getTotals();
+  const maxVal = Math.max(...Object.values(totals), 1);
+  
+  // 计算本斤均值（合计 ÷ 47）
+  const sumTotal = Object.values(totals).reduce((s, v) => s + v, 0);
+  const principalMean = sumTotal / 47;
+
+  // ========== 主表渲染 ==========
+  const theadRow = document.getElementById('theadRow');
+  let thHTML = `
+    <th class="t-num">号数</th>
+    <th>动物</th>
+    <th class="t-total">累计</th>
+    <th style="min-width:80px">分布</th>
+    <th style="color:#aaa;font-size:10px">历史</th>`;
+  for (let r = 1; r <= roundCounter; r++) {
+    const rd = roundList.find(x => x.round === r);
+    const lbl = rd ? rd.label : `第${r}次`;
+    thHTML += `<th style="color:#93c5fd;font-size:10px;min-width:44px">${lbl}</th>`;
+  }
+  theadRow.innerHTML = thHTML;
+
+  // 表体
+  const tbody = document.getElementById('tbody');
+  let rows = '';
+  let sumHist = 0;
+  const sumRounds = {};
+  
+  // 先计算所有行数据
+  let totalRemainingAfterSell = 0;
+  const rowData = [];
+  
+  for (let n = 1; n <= 49; n++) {
+    const total = totals[n] || 0;
+    const z = ZODIAC[n];
+    const pct = Math.round(total / maxVal * 100);
+    
+    // 抛售斤额：累计超出本斤均值的部分才抛，低于均值不抛（保留最大剩余）
+    // 策略：只抛超出均值的部分 → 抛售斤额最小，抛后剩余最大
+    let sellAmount = total > principalMean ? Math.round(total - principalMean) : 0;
+
+    // 抛售斤额四舍五入到最近的5的倍数
+    // 大于等于2.5向上取整,小于2.5向下取整
+    if (sellAmount > 0) {
+      sellAmount = Math.round(sellAmount / 5) * 5;
+    }
+
+    // 抛后剩余 = 累计 - 抛售斤额
+    // 大于均值时 → 剩余 ≈ 本斤均值（四舍五入后略有差异）
+    // 小于均值时 → 剩余 = 累计（全部保留）
+    const remainingAfterSell = total - sellAmount;
+
+    // 剩余47倍：抛后剩余 × 47（若此号中奖，能拿回多少）
+    const remaining47x = Math.round(remainingAfterSell * 47);
+    
+    totalRemainingAfterSell += remainingAfterSell;
+    
+    rowData.push({
+      n, z, total, pct, sellAmount, remainingAfterSell, remaining47x
+    });
+  }
+  
+  // 第二轮计算所亏本斤
+  // 逻辑：累计总和 = 所有收入（总本金）
+  // 若此号中奖，需赔付 抛后剩余 × 47
+  // 所亏本斤 = 累计总和 - 抛后剩余 × 47
+  // → 结果为正：盈利（收入 > 赔付）
+  // → 结果为负：亏损（收入 < 赔付）
+  for (let i = 0; i < rowData.length; i++) {
+    const row = rowData[i];
+    const lossAmount = totalRemainingAfterSell - row.remainingAfterSell * 47;
+    row.lossAmount = lossAmount;
+    
+    let vClass = 'v-zero';
+    if (row.total >= 100) vClass = 'v-high';
+    else if (row.total >= 50) vClass = 'v-mid';
+    else if (row.total > 0) vClass = 'v-low';
+
+    // 历史斤额
+    const histAmt = (historyByNum[row.n] || []).filter(x => x.round === 0).reduce((s, x) => s + x.amount, 0);
+    sumHist += histAmt;
+
+    // 各轮斤额
+    let roundCells = `<td class="td-hist"><span class="${histAmt ? 'hist-val nonzero' : 'hist-val hist-empty'}">${histAmt || ''}</span></td>`;
+    for (let r = 1; r <= roundCounter; r++) {
+      const rAmt = (historyByNum[row.n] || []).filter(x => x.round === r).reduce((s, x) => s + x.amount, 0);
+      sumRounds[r] = (sumRounds[r] || 0) + rAmt;
+      roundCells += `<td class="td-hist"><span class="${rAmt ? 'hist-val nonzero' : 'hist-val hist-empty'}">${rAmt || ''}</span></td>`;
+    }
+
+    rows += `
+      <tr id="row-${row.n}" data-num="${row.n}" data-zodiac="${row.z}">
+        <td class="td-num">${String(row.n).padStart(2,'0')}</td>
+        <td class="td-zodiac z-${row.z}">${row.z}</td>
+        <td class="td-total ${vClass}" id="cell-total-${row.n}">${row.total || '—'}</td>
+        <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${row.pct}%"></div></div></td>
+        ${roundCells}
+      </tr>`;
+  }
+
+  // 汇总行
+  let sumRoundCells = `<td>${sumHist || ''}</td>`;
+  for (let r = 1; r <= roundCounter; r++) {
+    sumRoundCells += `<td>${sumRounds[r] || ''}</td>`;
+  }
+  
+  rows += `
+    <tr class="sum-row">
+      <td colspan="2">合 计</td>
+      <td>${sumTotal}</td>
+      <td></td>
+      ${sumRoundCells}
+    </tr>
+    <tr class="sum-row" style="background:#0a1a10!important">
+      <td colspan="2" style="color:#f0c040;font-size:12px">本斤均值</td>
+      <td colspan="3" style="color:#f0c040;font-size:14px;text-align:left;padding-left:20px">${Math.round(principalMean)} (合计${sumTotal} ÷ 47)</td>
+      <td colspan="${roundCounter}"></td>
+    </tr>`;
+
+  tbody.innerHTML = rows;
+  
+  // ========== 财务分析表渲染 ==========
+  buildFinanceTable(rowData, sumTotal, principalMean, totalRemainingAfterSell);
+  
+  // 更新策略面板 & 盈亏预测格
+  updateStrategyPanel(totals);
+  updatePnlGrid(totals);
+  
+  updateStats(totals);
+}
+
+// 财务分析表渲染
+function buildFinanceTable(rowData, sumTotal, principalMean, totalRemainingAfterSell) {
+  const financeTbody = document.getElementById('financeTbody');
+  let financeRows = '';
+  
+  for (const row of rowData) {
+    let vClass = 'v-zero';
+    if (row.total >= 100) vClass = 'v-high';
+    else if (row.total >= 50) vClass = 'v-mid';
+    else if (row.total > 0) vClass = 'v-low';
+    
+    // 抛售斤额单元格样式：有数值时深红色背景，白色字体
+    const sellAmountStyle = row.sellAmount > 0 
+      ? 'background:#8B0000;color:#fff;font-weight:bold;font-size:12px' 
+      : 'background:#0d2015;color:#6ee7b7;font-size:12px';
+    
+    // 所亏本斤样式：正数为盈利（绿色），负数为亏损（红色）
+    const lossStyle = row.lossAmount >= 0
+      ? `background:#081a08;color:#4ade80;font-size:12px`  // 正数：盈利，绿色
+      : `background:#1a0808;color:#f87171;font-size:12px;font-weight:bold`;  // 负数：亏损，红色
+    const lossDisplay = row.lossAmount;
+    
+    financeRows += `
+      <tr data-num="${row.n}" data-zodiac="${row.z}">
+        <td class="td-num">${String(row.n).padStart(2,'0')}</td>
+        <td class="td-zodiac z-${row.z}">${row.z}</td>
+        <td class="td-total ${vClass}">${row.total || '—'}</td>
+        <td style="${sellAmountStyle}">${row.sellAmount || '—'}</td>
+        <td style="background:#0d1520;color:#93c5fd;font-size:12px">${row.remainingAfterSell || '—'}</td>
+        <td style="background:#150d20;color:#c084fc;font-size:12px">${row.remaining47x || '—'}</td>
+        <td style="${lossStyle}">${row.total > 0 ? lossDisplay : '—'}</td>
+      </tr>`;
+  }
+  
+  // 计算汇总行的财务数据
+  const totalSellAmount = rowData.reduce((s, r) => s + r.sellAmount, 0);
+  const totalRemaining = rowData.reduce((s, r) => s + r.remainingAfterSell, 0);
+  const totalRemaining47x = rowData.reduce((s, r) => s + r.remaining47x, 0);
+  const totalLoss = rowData.reduce((s, r) => s + r.lossAmount, 0);  // 可能包含负数
+  
+  // 汇总行抛售斤额样式
+  const totalSellStyle = totalSellAmount > 0 
+    ? 'background:#8B0000;color:#fff;font-weight:bold' 
+    : 'background:#0a2a14;color:#6ee7b7';
+  
+  financeRows += `
+    <tr class="sum-row">
+      <td colspan="2">合 计</td>
+      <td>${sumTotal}</td>
+      <td style="${totalSellStyle}">${totalSellAmount || '—'}</td>
+      <td style="background:#0a1a2a;color:#93c5fd;font-weight:bold">${totalRemaining}</td>
+      <td style="background:#0f0a1a;color:#c084fc">${totalRemaining47x}</td>
+      <td style="${totalLoss >= 0 ? 'background:#081a08;color:#4ade80' : 'background:#1a0a0a;color:#f87171'}">${totalLoss || '—'}</td>
+    </tr>
+    <tr style="background:#091a2a!important">
+      <td colspan="2" style="color:#7dd3fc;font-size:11px;font-weight:bold">盈亏基准线</td>
+      <td colspan="2" style="color:#64748b;font-size:11px;text-align:left;padding-left:8px">抛后剩余总和</td>
+      <td style="color:#38bdf8;font-size:15px;font-weight:bold;background:#0a1e36">${totalRemaining}</td>
+      <td colspan="2" style="color:#64748b;font-size:11px;text-align:left;padding-left:8px">所亏本斤 = 抛后剩余总和 - 中奖号剩余×47 (正数:亏损, 负数:盈利)</td>
+    </tr>
+    <tr class="sum-row" style="background:#0a1a10!important">
+      <td colspan="2" style="color:#f0c040;font-size:12px">本斤均值</td>
+      <td colspan="5" style="color:#f0c040;font-size:14px;text-align:left;padding-left:20px">${Math.round(principalMean)} (合计${sumTotal} ÷ 47)</td>
+    </tr>`;
+  
+  financeTbody.innerHTML = financeRows;
+
+  // 更新实时抛售总结
+  updateSellSummary(rowData);
+}
+
+// 更新实时抛售总结
+function updateSellSummary(rowData) {
+  const sellSummaryDiv = document.getElementById('sellSummary');
+
+  // 筛选出有抛售斤额的号码(抛售斤额>0)
+  const sellRows = rowData.filter(row => row.sellAmount > 0);
+
+  if (sellRows.length === 0) {
+    sellSummaryDiv.innerHTML = '<span style="color:#64748b;">暂无抛售数据</span>';
+    return;
+  }
+
+  // 按号数从小到大排序
+  sellRows.sort((a, b) => a.n - b.n);
+
+  // 生成总结文本,格式: 05号48米, 45号180米, 30号46米
+  const summaryText = sellRows.map(row =>
+    `${String(row.n).padStart(2,'0')}号${row.sellAmount}米`
+  ).join('，');
+
+  sellSummaryDiv.innerHTML = `<span style="color:#fbbf24;">${summaryText}</span>`;
+}
+
+// =============================================
+//  策略控制面板逻辑
+// =============================================
+let currentStrategy = 'balanced'; // 默认稳健
+
+// 各策略目标线（动态计算）
+function getStrategyThreshold(allTotals, strategy) {
+  const vals = Object.values(allTotals).filter(v => v > 0).sort((a, b) => b - a);
+  const total = vals.reduce((s, v) => s + v, 0);
+  
+  if (strategy === 'optimal') {
+    // 最优策略：遍历所有可能的目标线，找出使最坏亏损最小的方案
+    // 算法：minimax - 最小化最坏情况下的亏损
+    const candidates = [0, ...new Set(Object.values(allTotals))].sort((a, b) => a - b);
+    
+    let bestT = 0;
+    let bestMaxLoss = -Infinity;  // 负无穷，亏损越大（越负）越好
+    
+    for (const T of candidates) {
+      // 计算抛售后状态
+      let afterTotal = 0;
+      for (let n = 1; n <= 49; n++) {
+        const v = allTotals[n] || 0;
+        const sell = v > T ? v - T : 0;
+        afterTotal += v - sell;
+      }
+      
+      // 找最坏亏损
+      let minPnl = Infinity;
+      for (let n = 1; n <= 49; n++) {
+        const v = allTotals[n] || 0;
+        const remain = Math.min(v, T);
+        const pnl = afterTotal - remain * 47;  // 正=盈，负=亏
+        if (pnl < minPnl) minPnl = pnl;
+      }
+      
+      // 更新最优（minPnl越大=亏损越小）
+      if (minPnl > bestMaxLoss) {
+        bestMaxLoss = minPnl;
+        bestT = T;
+      }
+    }
+    
+    // 保存最优方案到全局，供后续使用
+    window.optimalSolution = { threshold: bestT };
+    return bestT;
+  }
+  
+  switch (strategy) {
+    case 'aggressive':   // 激进：至多5个号超出
+      return vals[5] !== undefined ? vals[5] : 0;
+    case 'balanced':     // 稳健：至多10个号超出
+      return vals[10] !== undefined ? vals[10] : 0;
+    case 'conservative': // 保守：至多20个号超出
+      return vals[20] !== undefined ? vals[20] : 0;
+    case 'custom': {
+      const v = parseInt(document.getElementById('customTarget').value) || 1500;
+      return v;
+    }
+    default: return vals[10] !== undefined ? vals[10] : 0;
+  }
+}
+
+function setStrategy(s) {
+  currentStrategy = s;
+  // 更新tab样式
+  ['optimal','aggressive','balanced','conservative','custom'].forEach(k => {
+    const el = document.getElementById(`tab-${k}`);
+    if (el) el.className = 'stab' + (k === s ? ` active-${k}` : '');
+  });
+  // 显示/隐藏自定义输入
+  document.getElementById('customRow').style.display = s === 'custom' ? 'flex' : 'none';
+  // 重新渲染（用最新 totals 重建）
+  rebuildWithStrategy();
+}
+
+function onCustomTargetChange() {
+  if (currentStrategy === 'custom') rebuildWithStrategy();
+}
+
+// 用当前 totals 重新触发策略面板渲染（不重建整个表格，只刷新策略区和盈亏区）
+function rebuildWithStrategy() {
+  // 计算当前 totals
+  const tot = {};
+  for (let n = 1; n <= 49; n++) {
+    const hist = (historyByNum[n] || []).reduce((s, x) => s + x.amount, 0);
+    tot[n] = hist;
+  }
+  updateStrategyPanel(tot);
+  updatePnlGrid(tot);
+}
+
+// 更新策略面板
+function updateStrategyPanel(allTotals) {
+  const sumTotal = Object.values(allTotals).reduce((s, v) => s + v, 0);
+  const threshold = getStrategyThreshold(allTotals, currentStrategy);
+
+  // 计算每号的策略抛售量
+  const sellMap = {}; // n → sell amount
+  let totalSell = 0;
+  for (let n = 1; n <= 49; n++) {
+    const v = allTotals[n] || 0;
+    const sell = v > threshold ? (v - threshold) : 0;
+    sellMap[n] = sell;
+    totalSell += sell;
+  }
+
+  const afterTotal = sumTotal - totalSell;
+  const lossCountAfter = countLossNums(allTotals, sellMap, afterTotal);
+  const sellCount = Object.values(sellMap).filter(v => v > 0).length;
+
+  // 更新数据卡片
+  document.getElementById('sc-total').textContent = sumTotal.toLocaleString();
+  document.getElementById('sc-threshold').textContent = threshold.toLocaleString() + ' 斤';
+  document.getElementById('sc-sellcount').textContent = sellCount + ' 个';
+  document.getElementById('sc-selltotal').textContent = totalSell.toLocaleString() + ' 斤';
+  document.getElementById('sc-aftertotal').textContent = afterTotal.toLocaleString() + ' 斤';
+  document.getElementById('sc-losscount').textContent = lossCountAfter + ' 个';
+  document.getElementById('sc-losscount').className = 'sc-val ' + (lossCountAfter === 0 ? 'green' : lossCountAfter <= 5 ? 'yellow' : 'red');
+
+  // 渲染需抛售号码标签
+  const sellTagList = document.getElementById('sellTagList');
+  const sellEntries = [];
+  for (let n = 1; n <= 49; n++) {
+    if (sellMap[n] > 0) sellEntries.push({ n, v: allTotals[n], sell: sellMap[n] });
+  }
+  sellEntries.sort((a, b) => b.v - a.v);
+
+  if (sellEntries.length === 0) {
+    sellTagList.innerHTML = '<span style="color:#4ade80;font-size:12px;">✅ 无需抛售，风险可控</span>';
+    document.getElementById('sellTextSummary').innerHTML = '<span style="color:#64748b;">暂无抛售数据</span>';
+    return;
+  }
+
+  sellTagList.innerHTML = sellEntries.map(({ n, v, sell }) => {
+    const tierClass = v >= 3000 ? 'tier1' : v >= 1500 ? 'tier2' : 'tier3';
+    return `<div class="sell-tag ${tierClass}">
+      <span class="stnum">${String(n).padStart(2,'0')}号(${ZODIAC[n]})</span>
+      <span class="stamt">抛${sell.toLocaleString()}斤</span>
+      <span style="font-size:9px;color:#94a3b8">${v.toLocaleString()}→${(v-sell).toLocaleString()}</span>
+    </div>`;
+  }).join('');
+
+  // 生成文字总结（例如：20号205米、15号135米）
+  const summaryText = sellEntries.map(({ n, sell }) => 
+    `${String(n).padStart(2,'0')}号${sell}米`
+  ).join('、');
+  document.getElementById('sellTextSummary').innerHTML = 
+    `<span style="color:#fbbf24;">${summaryText}</span>`;
+}
+
+// 计算按策略抛售后，有多少个号开出时会亏损
+function countLossNums(allTotals, sellMap, afterTotal) {
+  let count = 0;
+  for (let n = 1; n <= 49; n++) {
+    const v = allTotals[n] || 0;
+    const sell = sellMap[n] || 0;
+    const remain = v - sell;
+    // 若开该号：能回收 remain × 47，需支出 afterTotal（全部本金）
+    // 亏损条件：afterTotal > remain × 47
+    if (v > 0 && afterTotal > remain * 47) count++;
+  }
+  return count;
+}
+
+// 更新盈亏预测格
+function updatePnlGrid(allTotals) {
+  const sumTotal = Object.values(allTotals).reduce((s, v) => s + v, 0);
+  const threshold = getStrategyThreshold(allTotals, currentStrategy);
+
+  // 计算抛后状态
+  const afterTotals = {};
+  let afterSum = 0;
+  for (let n = 1; n <= 49; n++) {
+    const v = allTotals[n] || 0;
+    const sell = v > threshold ? (v - threshold) : 0;
+    afterTotals[n] = v - sell;
+    afterSum += v - sell;
+  }
+
+  const grid = document.getElementById('pnlGrid');
+  let html = '';
+  let winCount = 0, loseCount = 0, breakCount = 0;
+  for (let n = 1; n <= 49; n++) {
+    const remain = afterTotals[n];
+    // 若该号开出：收入 = 累计总和，赔付 = remain×47
+    // 净盈亏 = 累计总和 - remain×47（正=盈利，负=亏损）
+    const pnl = afterSum - remain * 47;
+    const orig = allTotals[n] || 0;
+    let cls, sign;
+    if (orig === 0) {
+      cls = 'lose'; sign = pnl.toLocaleString();  // 没持仓，开出必亏
+      loseCount++;
+    } else if (pnl > 0) {
+      cls = 'win'; sign = '+' + pnl.toLocaleString();
+      winCount++;
+    } else if (pnl < -sumTotal * 0.05) {
+      cls = 'lose'; sign = pnl.toLocaleString();
+      loseCount++;
+    } else {
+      cls = 'breakeven'; sign = (pnl >= 0 ? '+' : '') + pnl.toLocaleString();
+      breakCount++;
+    }
+    html += `<div class="pnl-cell ${cls}" title="${String(n).padStart(2,'0')}号 抛后剩余${remain}斤 开出净盈亏${pnl}">
+      <div class="pnl-num">${String(n).padStart(2,'0')}</div>
+      <div class="pnl-zodiac">${ZODIAC[n]}</div>
+      <div class="pnl-val">${sign}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+
+  // 更新盈亏统计面板
+  document.getElementById('pnlWinCount').textContent = winCount;
+  document.getElementById('pnlLoseCount').textContent = loseCount;
+  document.getElementById('pnlBreakCount').textContent = breakCount;
+  document.getElementById('pnlTotalCount').textContent = (winCount + loseCount + breakCount);
+}
+
+function updateStats(totals) {
+  const vals = Object.entries(totals).filter(([,v]) => v > 0);
+  const total = vals.reduce((s, [,v]) => s + v, 0);
+  const count = vals.length;
+  let maxNum = '—', maxV = 0;
+  for (const [n, v] of vals) { if (v > maxV) { maxV = v; maxNum = `${n}号`; } }
+  document.getElementById('s-total').textContent = total.toLocaleString();
+  document.getElementById('s-count').textContent = count;
+  document.getElementById('s-max').textContent = maxNum;
+  document.getElementById('s-rounds').textContent = roundCounter;
+}
+
+// =============================================
+//  实时输入处理
+// =============================================
+let inputTimer = null;
+
+document.getElementById('inputBox').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const inputEl = document.getElementById('inputBox');
+    const text = inputEl.value;
+    if (!text.trim()) return;
+    inputEl.focus();
+
+    // 解析所有行,合并所有行的指令为一个批次
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    let allEntries = []; // 存储所有行的指令
+    let rawTexts = [];   // 存储每行的原始文本
+
+    for (const line of lines) {
+      const entries = parseLine(line);
+      if (entries.length > 0) {
+        allEntries = allEntries.concat(entries);
+        rawTexts.push(line);
+      }
+    }
+
+    // 清空输入框 - 立即清空，不使用setTimeout
+    this.value = '';
+    this.style.height = 'auto'; // 重置高度
+    this.scrollTop = 0; // 重置滚动位置
+
+        if (allEntries.length > 0) {
+      // 将所有指令合并为一个批次处理
+      processLine(rawTexts.join('\n'), allEntries);
+      document.getElementById('parseResult').innerHTML = `<span class="parse-ok">✓ 成功录入 ${rawTexts.length} 行数据，共 ${allEntries.length} 条记录</span>`;
+      setTimeout(() => {
+        document.getElementById('parseResult').innerHTML = '<span class="parse-idle">等待输入...</span>';
+      }, 1500);
+    } else {
+      document.getElementById('parseResult').innerHTML = '<span class="parse-warn">⚠ 没有有效数据需要录入</span>';
+    }
+  }
+});
+
+// 实时预览（不提交）- 显示所有待解析的行
+document.getElementById('inputBox').addEventListener('input', function() {
+  clearTimeout(inputTimer);
+  const text = this.value;
+
+  // 立即更新预览,不使用trim,确保能看到空格等
+  if (!text) {
+    document.getElementById('parseResult').innerHTML = '<span class="parse-idle">等待输入...</span>';
+    return;
+  }
+
+  // 立即调用预览,不延迟
+  previewParseAll(text);
+});
+
+// 添加keyup事件作为补充,确保所有输入变化都能捕获
+document.getElementById('inputBox').addEventListener('keyup', function() {
+  const text = this.value;
+  previewParseAll(text);
+});
+
+// 添加change事件,确保所有修改都能被捕获
+document.getElementById('inputBox').addEventListener('change', function() {
+  const text = this.value;
+  previewParseAll(text);
+});
+
+// 添加focus事件,当输入框获得焦点时更新预览
+document.getElementById('inputBox').addEventListener('focus', function() {
+  const text = this.value;
+  previewParseAll(text);
+});
+
+function previewParse(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+  if (lines.length === 0) {
+    document.getElementById('parseResult').innerHTML = '<span class="parse-idle">等待输入...</span>';
+    return;
+  }
+
+  // 单行预览
+  const line = lines[0];
+  const detail = parseLineDetailed(line);
+  const resultDiv = document.getElementById('parseResult');
+
+  if (!detail.segments.length) {
+    resultDiv.innerHTML = `<span class="parse-warn">⚠ 未识别 :[动物/号码][各/号/各号/包]斤额)</span>`;
+    return;
+  }
+
+  let html = '';
+  for (const seg of detail.segments) {
+    if (!seg.isValid) {
+      html += `<div><span class="parse-err">✗ 斤额 ${Math.abs(seg.amount)} 不是5的倍数，跳过</span></div>`;
+      continue;
+    }
+
+    const isMinus = seg.amount < 0;
+    const absAmount = Math.abs(seg.amount);
+
+    // 动物展开说明
+    let zodiacHtml = '';
+    for (const ze of seg.zodiacExpand) {
+      zodiacHtml += `<span style="color:#f0c040;font-weight:bold">${ze.zodiac}</span>`
+        + `<span style="color:#475569">→[</span>`
+        + ze.nums.map(n => `<span style="color:#c084fc">${String(n).padStart(2,'0')}</span>`).join('<span style="color:#334155">,</span>')
+        + `<span style="color:#475569">]</span> `;
+    }
+
+    // 汇总所有号
+    const allHtml = seg.allNums.map(n => {
+      const isFromZodiac = seg.zodiacExpand.some(ze => ze.nums.includes(n));
+      const color = isFromZodiac ? '#c084fc' : '#60a5fa';
+      return `<span style="color:${color};font-weight:bold">${String(n).padStart(2,'0')}</span>`;
+    }).join(' ');
+
+    html += `<div style="margin-bottom:4px">`;
+    if (zodiacHtml) html += `<div style="font-size:11px;color:#7a8fa8">${zodiacHtml}</div>`;
+    if (isMinus) {
+      html += `<span style="color:#f87171;font-weight:bold">⚠ 减法操作，回车确认：</span> ${allHtml}`
+            + `<span style="color:#f87171;font-weight:bold;font-size:15px"> 各-${absAmount}</span>`
+            + ` <span style="color:#334155;font-size:11px">(共${seg.allNums.length}个号)</span>`;
+    } else {
+      html += `<span class="parse-ok">✓ 回车确认：</span> ${allHtml}`
+            + `<span style="color:#f0c040;font-weight:bold">各+${absAmount}</span>`
+            + ` <span style="color:#334155;font-size:11px">(共${seg.allNums.length}个号)</span>`;
+    }
+    html += `</div>`;
+  }
+
+  resultDiv.innerHTML = html;
+}
+
+// 预览所有待解析的行（多行模式）
+function previewParseAll(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const resultDiv = document.getElementById('parseResult');
+
+  if (lines.length === 0) {
+    resultDiv.innerHTML = '<span class="parse-idle">等待输入...</span>';
+    return;
+  }
+
+  if (lines.length === 1) {
+    // 单行用原来的预览
+    previewParse(text);
+    return;
+  }
+
+  // 多行预览
+  let html = `<div style="color:#60a5fa;margin-bottom:6px">📋 检测到 ${lines.length} 行数据，回车将依次录入：</div>`;
+  let totalValidLines = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const detail = parseLineDetailed(line);
+
+    if (!detail.segments.length || !detail.segments.some(s => s.isValid)) {
+      html += `<div style="color:#f87171;font-size:11px">行${i+1}: ⚠ 无法识别 "${line.slice(0,20)}..."</div>`;
+      continue;
+    }
+
+    totalValidLines++;
+
+    // 显示该行的所有指令
+    html += `<div style="margin-bottom:3px;font-size:11px">`;
+    html += `<span style="color:#475569">行${i+1}:</span> `;
+
+    for (let j = 0; j < detail.segments.length; j++) {
+      const seg = detail.segments[j];
+      if (!seg.isValid) continue;
+
+      const isMinus = seg.amount < 0;
+      const absAmount = Math.abs(seg.amount);
+      const zodiacBadges = seg.zodiacs.map(z => `<span style="color:#f0c040">${z}</span>`).join('');
+      const numCount = seg.allNums.length;
+
+      if (j > 0) html += ` | `;
+      if (zodiacBadges) html += `${zodiacBadges} `;
+      html += `<span style="color:#c084fc">${numCount}个号</span> `;
+      if (isMinus) {
+        html += `<span style="color:#f87171;font-weight:bold">-${absAmount}</span>`;
+      } else {
+        html += `<span style="color:#f0c040">+${absAmount}</span>`;
+      }
+    }
+
+    html += `</div>`;
+  }
+
+  if (totalValidLines > 0) {
+    html += `<div style="margin-top:6px;color:#34d399">✓ 按回车键确认录入以上 ${totalValidLines} 条记录</div>`;
+  }
+
+  resultDiv.innerHTML = html;
+}
+
+function processLine(line, entries) {
+  if (entries.length === 0) {
+    document.getElementById('parseResult').innerHTML =
+      `<span class="parse-warn">⚠ 未识别到有效数据，请检查格式</span>`;
+    return;
+  }
+
+  roundCounter++;
+  const round = roundCounter;
+  const isMinus = entries.length > 0 && entries.every(e => e.amount < 0);
+  const roundLabel = isMinus ? `第${round}次[减]` : `第${round}次`;
+
+  const entryList = [];
+  for (const { num, amount } of entries) {
+    if (!historyByNum[num]) historyByNum[num] = [];
+    historyByNum[num].push({ round, amount, label: roundLabel });
+    entryList.push({ num, amount });
+  }
+
+  roundList.push({ round, label: roundLabel, entries: entryList, raw: line, isMinus });
+
+  const roundTotal = entryList.reduce((sum, e) => sum + e.amount, 0);
+  updateRoundSummary(round, line, entryList, roundTotal, isMinus);
+  updateHistList(round, line, entryList, isMinus);
+  buildTable();
+
+  // 高亮新增/减少行
+  const highlightedNums = new Set();
+  for (const { num } of entryList) {
+    if (!highlightedNums.has(num)) {
+      highlightedNums.add(num);
+      const row = document.getElementById(`row-${num}`);
+      const cell = document.getElementById(`cell-total-${num}`);
+      if (row) { row.classList.add('highlight-row'); setTimeout(() => row.classList.remove('highlight-row'), 1200); }
+      if (cell) { cell.classList.add('cell-flash'); setTimeout(() => cell.classList.remove('cell-flash'), 600); }
+    }
+  }
+}
+
+
+function updateRoundSummary(round, raw, entries, total, isMinus) {
+  const roundSummary = document.getElementById('roundSummary');
+  const div = document.createElement('div');
+  div.className = 'round-item';
+  div.id = `round-summary-${round}`;
+
+  // 找出来源动物
+  const zodiacsInRaw = (raw.match(ZODIAC_RE) || []);
+  const zodiacBadges = zodiacsInRaw.map(z =>
+    `<span style="color:#c084fc;font-size:10px">${z}</span>`
+  ).join('');
+
+  // 统计号码数量（去重）
+  const uniqueNums = [...new Set(entries.map(e => e.num))];
+  const numCount = uniqueNums.length;
+
+  // 显示摘要（前几个号码）
+  const numsPreview = uniqueNums.slice(0, 6).map(n => `${String(n).padStart(2,'0')}`).join(',');
+  const detailStr = numCount > 6 ? `${numsPreview}...等${numCount}个号` : `${numsPreview} 共${numCount}个号`;
+
+  const amountColor = isMinus ? '#f87171' : '#f0c040';
+  const amountSign = total >= 0 ? '+' : '';
+  const tagLabel = isMinus ? `第${round}次<span style="color:#f87171;font-size:10px">[减]</span>` : `第${round}次${zodiacBadges ? ' '+zodiacBadges : ''}`;
+
+  div.innerHTML = `
+    <span class="round-tag">${tagLabel}</span>
+    <span class="round-detail">${detailStr}</span>
+    <span class="round-amount" style="color:${amountColor}">${amountSign}${total}</span>`;
+
+  const idle = roundSummary.querySelector('.parse-idle');
+  if (idle) idle.remove();
+  roundSummary.insertBefore(div, roundSummary.firstChild);
+}
+
+function updateHistList(round, raw, entries, isMinus) {
+  const histList = document.getElementById('histList');
+  const div = document.createElement('div');
+  div.className = 'hist-item';
+  div.id = `hist-item-${round}`;
+
+  // 找出来源动物（如果原始文本含动物名）
+  const zodiacsInRaw = (raw.match(ZODIAC_RE) || []);
+  const zodiacBadges = zodiacsInRaw.map(z =>
+    `<span style="color:#c084fc;font-size:10px">${z}</span>`
+  ).join('');
+
+  // 显示号码和金额（减法时金额为负）
+  const numsStr = entries.slice(0, 8).map(e => {
+    const sign = e.amount >= 0 ? '+' : '';
+    return `${String(e.num).padStart(2,'0')}${sign}${e.amount}`;
+  }).join(' ') + (entries.length > 8 ? `...共${entries.length}个` : '');
+
+  const tagLabel = isMinus
+    ? `第${round}次<span style="color:#f87171;font-size:10px">[减]</span>`
+    : `第${round}次${zodiacBadges ? ' '+zodiacBadges : ''}`;
+  const tagColor = isMinus ? '#f87171' : '#60a5fa';
+
+  div.innerHTML = `
+    <span class="hist-tag" style="color:${tagColor}">${tagLabel}</span>
+    <span class="hist-nums" title="${raw.replace(/"/g,'')}">${numsStr}</span>
+    <span class="hist-del" onclick="deleteRound(${round})" title="撤销此次">×</span>`;
+
+  const idle = histList.querySelector('.parse-idle');
+  if (idle) idle.remove();
+  histList.insertBefore(div, histList.firstChild);
+}
+
+function deleteRound(round) {
+  // 从所有号的历史中删除该轮
+  for (let n = 1; n <= 49; n++) {
+    if (historyByNum[n]) {
+      historyByNum[n] = historyByNum[n].filter(x => x.round !== round);
+    }
+  }
+  // 从 roundList 中删除
+  const idx = roundList.findIndex(x => x.round === round);
+  if (idx !== -1) roundList.splice(idx, 1);
+
+  // 重新编号（roundCounter 不变，只删列）
+  const histItem = document.getElementById(`hist-item-${round}`);
+  if (histItem) histItem.remove();
+  
+  // 删除斤额汇总
+  const roundSummaryItem = document.getElementById(`round-summary-${round}`);
+  if (roundSummaryItem) roundSummaryItem.remove();
+
+  buildTable();
+}
+
+// =============================================
+//  搜索过滤
+// =============================================
+function filterTable() {
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const rows = document.querySelectorAll('#tbody tr[data-num]');
+  rows.forEach(row => {
+    const num = row.getAttribute('data-num');
+    const zodiac = row.getAttribute('data-zodiac');
+    const match = !q || num.includes(q) || zodiac.includes(q) || String(parseInt(num)).includes(q);
+    row.style.display = match ? '' : 'none';
+  });
+}
+
+// =============================================
+//  批量导入（含文件自动读取）
+// =============================================
+function openBatchModal() {
+  document.getElementById('batchModal').classList.add('show');
+  document.getElementById('fileStatus').textContent = '';
+}
+function closeBatchModal() { document.getElementById('batchModal').classList.remove('show'); }
+function clearBatchInput() {
+  document.getElementById('batchInput').value = '';
+  document.getElementById('fileStatus').textContent = '';
+}
+
+// 批量导入专用（不触发 buildTable，由 doBatchImport 最后统一调用）
+function processLineBatch(line, entries) {
+  if (!entries || entries.length === 0) return;
+  roundCounter++;
+  const round = roundCounter;
+  const isMinus = entries.every(e => e.amount < 0);
+  const roundLabel = isMinus ? `第${round}次[减]` : `第${round}次`;
+
+  const entryList = [];
+  for (const { num, amount } of entries) {
+    if (!historyByNum[num]) historyByNum[num] = [];
+    historyByNum[num].push({ round, amount, label: roundLabel });
+    entryList.push({ num, amount });
+  }
+
+  roundList.push({ round, label: roundLabel, entries: entryList, raw: line, isMinus });
+
+  const roundTotal = entryList.reduce((sum, e) => sum + e.amount, 0);
+  updateRoundSummary(round, line, entryList, roundTotal, isMinus);
+  updateHistList(round, line, entryList, isMinus);
+  // 注意：不调用 buildTable()，由 doBatchImport 最后统一调用
+}
+
+function doBatchImport() {
+  const text = document.getElementById('batchInput').value.trim();
+  if (!text) { closeBatchModal(); return; }
+  const lines = text.split('\n');
+
+  let successCount = 0;  // 解析成功的行
+  let skipCount = 0;     // 跳过的行（无法识别）
+  const failedLines = [];
+
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+
+    // 先试解析，只有有效才录入
+    const entries = parseLine(l);
+    if (entries.length > 0) {
+      processLineBatch(l, entries); // 批量模式，不触发buildTable
+      successCount++;
+    } else {
+      skipCount++;
+      if (failedLines.length < 5) failedLines.push(l); // 记录前5条失败行
+    }
+  }
+
+  // 全部录完后统一刷新表格一次
+  buildTable();
+
+  document.getElementById('batchInput').value = '';
+  document.getElementById('fileStatus').textContent = '';
+  closeBatchModal();
+
+  let msg = `<span class="parse-ok">✓ 导入完成：成功 ${successCount} 行</span>`;
+  if (skipCount > 0) {
+    msg += `<span class="parse-warn" style="margin-left:8px">⚠ 跳过 ${skipCount} 行（格式不符）</span>`;
+    if (failedLines.length > 0) {
+      msg += `<div style="font-size:11px;color:#475569;margin-top:4px">示例未识别行：${failedLines.map(l=>`"${l.slice(0,15)}"`).join('，')}</div>`;
+    }
+  }
+  document.getElementById('parseResult').innerHTML = msg;
+}
+
+// ---- 拖拽处理 ----
+function handleDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const dz = document.getElementById('dropZone');
+  dz.style.borderColor = '#2563eb';
+  dz.style.background = '#0d2040';
+}
+function handleDragLeave(e) {
+  e.preventDefault();
+  const dz = document.getElementById('dropZone');
+  dz.style.borderColor = '#2563eb88';
+  dz.style.background = '#0a1828';
+}
+function handleFileDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  handleDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) readImportFile(file);
+}
+
+// ---- 文件选择处理 ----
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) readImportFile(file);
+  e.target.value = ''; // 重置，允许重复选同一文件
+}
+
+// ---- 核心文件读取 ----
+function readImportFile(file) {
+  const statusEl = document.getElementById('fileStatus');
+  const ext = file.name.split('.').pop().toLowerCase();
+  statusEl.textContent = `📄 正在读取：${file.name}`;
+  statusEl.style.color = '#60a5fa';
+
+  if (ext === 'xlsx' || ext === 'xls') {
+    // Excel 文件：用 SheetJS 读取
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        // 策略：
+        // 1. 如果只有一列，直接用第一列
+        // 2. 如果多列，找包含动物/号码指令的列（通常第一列）
+        // 3. 跳过纯数字行（可能是表头序号）和空行
+        const lines = [];
+        for (const row of rows) {
+          // 优先第一列，若第一列为空则尝试第二列
+          let cell = String(row[0] || '').trim();
+          if (!cell && row[1]) cell = String(row[1]).trim();
+          if (!cell) continue;
+
+          // 跳过纯数字行（如行号）和明显的表头文字
+          if (/^[\d\s]+$/.test(cell)) continue;
+          if (/^(号数|号码|动物|累计|合计|标题|备注|日期|时间)/.test(cell)) continue;
+
+          lines.push(cell);
+        }
+        fillBatchTextarea(lines, file.name);
+      } catch(err) {
+        statusEl.textContent = `❌ Excel 读取失败：${err.message}`;
+        statusEl.style.color = '#f87171';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+
+  } else if (ext === 'txt' || ext === 'csv') {
+    // 文本 / CSV 文件：直接读取
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+      fillBatchTextarea(lines, file.name);
+    };
+    // 尝试 UTF-8，中文文件若乱码可改为 GBK
+    reader.readAsText(file, 'UTF-8');
+
+  } else {
+    statusEl.textContent = '❌ 不支持的文件格式，请使用 .txt / .csv / .xlsx';
+    statusEl.style.color = '#f87171';
+  }
+}
+
+// 填充文本框
+function fillBatchTextarea(lines, fileName) {
+  const statusEl = document.getElementById('fileStatus');
+  const textarea = document.getElementById('batchInput');
+  textarea.value = lines.join('\n');
+  statusEl.textContent = `✅ 已读取 "${fileName}"，共 ${lines.length} 行，请确认后点击"确认导入"`;
+  statusEl.style.color = '#34d399';
+}
+
+
+// =============================================
+//  清空数据
+// =============================================
+function confirmClear() {
+  if (!confirm('确定清空所有录入数据吗？\n（历史导入数据也会清除）')) return;
+  historyByNum = {};
+  roundList = [];
+  roundCounter = 0;
+    document.getElementById('histList').innerHTML = '<div class="parse-idle" style="font-size:11px;padding:4px 0;">暂无记录</div>';
+  document.getElementById('roundSummary').innerHTML = '<div class="parse-idle" style="font-size:12px;padding:6px 0;">等待输入...</div>';
+  document.getElementById('parseResult').innerHTML = '<span class="parse-idle">等待输入...</span>';
+  document.getElementById('inputBox').value = '';
+    buildTable();
+}
+
+// =============================================
+//  导出 Excel
+// =============================================
+function exportExcel() {
+  const totals = getTotals();
+  const wb = XLSX.utils.book_new();
+
+  // 构建表头
+  const headers = ['号数', '动物', '累计合计', '历史导入'];
+  for (let r = 1; r <= roundCounter; r++) {
+    const rd = roundList.find(x => x.round === r);
+    headers.push(rd ? rd.label : `第${r}次`);
+  }
+
+  const data = [headers];
+  let sumRow = ['合计', '', 0, 0];
+  for (let r = 1; r <= roundCounter; r++) sumRow.push(0);
+
+  for (let n = 1; n <= 49; n++) {
+    const total = totals[n] || 0;
+    const histAmt = (historyByNum[n] || []).filter(x => x.round === 0).reduce((s, x) => s + x.amount, 0);
+    const row = [String(n).padStart(2, '0'), ZODIAC[n], total, histAmt || ''];
+
+    for (let r = 1; r <= roundCounter; r++) {
+      const rAmt = (historyByNum[n] || []).filter(x => x.round === r).reduce((s, x) => s + x.amount, 0);
+      row.push(rAmt || '');
+      sumRow[4 + r - 1] = (sumRow[4 + r - 1] || 0) + rAmt;
+    }
+
+    sumRow[2] += total;
+    sumRow[3] += histAmt;
+    data.push(row);
+  }
+  data.push(sumRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 6 }, { wch: 5 }, { wch: 10 }, { wch: 10 }, ...Array(roundCounter).fill({ wch: 8 })];
+  XLSX.utils.book_append_sheet(wb, ws, '动物统计表');
+
+  // 历史批次Sheet
+  const histData = [['批次', '原始文本', '涉及号数']];
+  for (const rd of roundList) {
+    const nums = rd.entries.map(e => `${e.num}号+${e.amount}`).join(', ');
+    histData.push([rd.label, rd.raw || '历史导入', nums]);
+  }
+  const ws2 = XLSX.utils.aoa_to_sheet(histData);
+  ws2['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws2, '录入历史');
+
+  const now = new Date();
+  const fname = `动物统计_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// =============================================
+//  动物样式
+// =============================================
+const style = document.createElement('style');
+style.textContent = `.z-鼠{color:#c084fc}.z-牛{color:#67e8f9}.z-虎{color:#fb923c}.z-兔{color:#86efac}.z-龙{color:#f87171}.z-蛇{color:#34d399}.z-马{color:#fde68a}.z-羊{color:#d8b4fe}.z-猴{color:#93c5fd}.z-鸡{color:#fcd34d}.z-狗{color:#fdba74}.z-猪{color:#a3e635}`;
+document.head.appendChild(style);
+
+// =============================================
+//  初始化
+// =============================================
+initData();
+buildTable();
+</script>
+</body>
+</html>
