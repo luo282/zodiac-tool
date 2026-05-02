@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>号码属性展开工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+  min-height: 100vh;
+  padding: 20px;
+  color: #e0e6f0;
+}
+.container { max-width: 900px; margin: 0 auto; }
+
+/* 标题 */
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.header h1 {
+  color: #f0c040;
+  font-size: 28px;
+  text-shadow: 0 0 20px #f0c04055;
+  margin-bottom: 8px;
+}
+.header p { color: #7ca8d0; font-size: 14px; }
+
+/* 输入区 */
+.input-section {
+  background: #0e1f35;
+  border: 2px solid #2563eb44;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.input-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.input-box {
+  flex: 1;
+  min-width: 250px;
+  padding: 16px 20px;
+  font-size: 18px;
+  border: 2px solid #2563eb55;
+  border-radius: 12px;
+  background: #0a1828;
+  color: #e0e6f0;
+  outline: none;
+}
+.input-box:focus { border-color: #2563eb; box-shadow: 0 0 0 4px #2563eb22; }
+.input-box::placeholder { color: #475569; }
+.btn {
+  padding: 14px 28px;
+  font-size: 16px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+.btn-copy {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+}
+.btn-copy:hover { transform: translateY(-2px); box-shadow: 0 4px 15px #05966955; }
+
+/* 快捷标签 */
+.quick-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.quick-tag {
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+.quick-tag:hover { transform: scale(1.05); }
+.tag-gold { background: linear-gradient(135deg, #78350f, #92400e); color: #fde68a; border-color: #f59e0b; }
+.tag-wood { background: linear-gradient(135deg, #14532d, #166534); color: #86efac; border-color: #22c55e; }
+.tag-water { background: linear-gradient(135deg, #1e3a5f, #1e40af); color: #93c5fd; border-color: #3b82f6; }
+.tag-fire { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border-color: #ef4444; }
+.tag-earth { background: linear-gradient(135deg, #3f2c1d, #5c4033); color: #d4a574; border-color: #a0522d; }
+.tag-red { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border-color: #ef4444; }
+.tag-blue { background: linear-gradient(135deg, #1e3a5f, #1e40af); color: #93c5fd; border-color: #3b82f6; }
+.tag-green { background: linear-gradient(135deg, #14532d, #166534); color: #86efac; border-color: #22c55e; }
+.tag-odd { background: linear-gradient(135deg, #4c1d95, #5b21b6); color: #c4b5fd; border-color: #8b5cf6; }
+.tag-even { background: linear-gradient(135deg, #065f46, #047857); color: #6ee7b7; border-color: #10b981; }
+
+/* 结果显示 */
+.result-section {
+  background: #0e1f35;
+  border: 2px solid #2563eb44;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.result-title {
+  color: #7dd3fc;
+  font-size: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 展开结果大卡片 */
+.expand-card {
+  background: #0a1828;
+  border-radius: 16px;
+  padding: 20px;
+  border: 2px solid #f0c04044;
+}
+.expand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.expand-input {
+  color: #f0c040;
+  font-size: 18px;
+  font-family: 'Courier New', monospace;
+}
+.expand-arrow {
+  color: #475569;
+  font-size: 20px;
+}
+.expand-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+}
+.badge-gold { background: #78350f; color: #fde68a; }
+.badge-wood { background: #14532d; color: #86efac; }
+.badge-water { background: #1e3a5f; color: #93c5fd; }
+.badge-fire { background: #7f1d1d; color: #fca5a5; }
+.badge-earth { background: #3f2c1d; color: #d4a574; }
+.badge-red { background: #7f1d1d; color: #fca5a5; }
+.badge-blue { background: #1e3a5f; color: #93c5fd; }
+.badge-green { background: #14532d; color: #86efac; }
+.badge-odd { background: #4c1d95; color: #c4b5fd; }
+.badge-even { background: #065f46; color: #6ee7b7; }
+
+/* 号码球网格 */
+.number-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.num-ball {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+.ball-red { background: linear-gradient(135deg, #dc2626, #ef4444); }
+.ball-blue { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+.ball-green { background: linear-gradient(135deg, #16a34a, #22c55e); }
+
+/* 展开指令框 */
+.expand-command {
+  background: #1a2f50;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  border-left: 4px solid #f0c040;
+}
+.command-label {
+  color: #7ca8d0;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.command-text {
+  color: #60a5fa;
+  font-size: 15px;
+  font-family: 'Courier New', monospace;
+  line-height: 1.8;
+  word-break: break-all;
+}
+.command-copy {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  color: #475569;
+  padding: 50px;
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+
+/* 对照表 */
+.ref-section {
+  margin-top: 30px;
+  background: #0e1f35;
+  border: 2px solid #2563eb44;
+  border-radius: 16px;
+  padding: 24px;
+}
+.ref-title {
+  color: #f0c040;
+  font-size: 18px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.ref-item {
+  background: #0a1828;
+  border-radius: 12px;
+  padding: 14px;
+  border-left: 4px solid;
+}
+.ref-item.gold { border-color: #f59e0b; }
+.ref-item.wood { border-color: #22c55e; }
+.ref-item.water { border-color: #3b82f6; }
+.ref-item.fire { border-color: #ef4444; }
+.ref-item.earth { border-color: #a0522d; }
+.ref-item.red { border-color: #ef4444; }
+.ref-item.blue { border-color: #3b82f6; }
+.ref-item.green { border-color: #22c55e; }
+.ref-item.odd { border-color: #8b5cf6; }
+.ref-item.even { border-color: #10b981; }
+.ref-name { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.ref-name.gold { color: #fde68a; }
+.ref-name.wood { color: #86efac; }
+.ref-name.water { color: #93c5fd; }
+.ref-name.fire { color: #fca5a5; }
+.ref-name.earth { color: #d4a574; }
+.ref-name.red { color: #fca5a5; }
+.ref-name.blue { color: #93c5fd; }
+.ref-name.green { color: #86efac; }
+.ref-name.odd { color: #c4b5fd; }
+.ref-name.even { color: #6ee7b7; }
+.ref-nums { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+
+/* 复制成功提示 */
+.copy-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #059669;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 1000;
+}
+.copy-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🔮 号码属性展开工具</h1>
+    <p>输入属性关键词，自动识别号码并生成展开指令</p>
+  </div>
+
+  <div class="input-section">
+    <div class="input-row">
+      <input type="text" class="input-box" id="inputBox" 
+             placeholder="输入如：金各5、红波各10、合数单各20..."
+             oninput="handleInput()">
+      <button class="btn btn-copy" onclick="copyCommand()">📋 复制指令</button>
+    </div>
+    <div class="quick-tags">
+      <span class="quick-tag tag-gold" onclick="setInput('金各')">🥇 金</span>
+      <span class="quick-tag tag-wood" onclick="setInput('木各')">🌲 木</span>
+      <span class="quick-tag tag-water" onclick="setInput('水各')">💧 水</span>
+      <span class="quick-tag tag-fire" onclick="setInput('火各')">🔥 火</span>
+      <span class="quick-tag tag-earth" onclick="setInput('土各')">🏔️ 土</span>
+      <span class="quick-tag tag-red" onclick="setInput('红波各')">🔴 红波</span>
+      <span class="quick-tag tag-blue" onclick="setInput('蓝波各')">🔵 蓝波</span>
+      <span class="quick-tag tag-green" onclick="setInput('绿波各')">🟢 绿波</span>
+      <span class="quick-tag tag-odd" onclick="setInput('合数单各')">📊 合数单</span>
+      <span class="quick-tag tag-even" onclick="setInput('合数双各')">📊 合数双</span>
+    </div>
+  </div>
+
+  <div class="result-section">
+    <div class="result-title">📋 展开结果</div>
+    <div id="resultContent">
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <div>在上方输入关键词，或点击快捷标签查询</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref-section">
+    <div class="ref-title">📖 属性对照表</div>
+    <div class="ref-grid">
+      <div class="ref-item gold">
+        <div class="ref-name gold">🥇 金</div>
+        <div class="ref-nums">04,05,12,13,26,27,34,35,42,43</div>
+      </div>
+      <div class="ref-item wood">
+        <div class="ref-name wood">🌲 木</div>
+        <div class="ref-nums">08,09,16,17,24,25,38,39,46,47</div>
+      </div>
+      <div class="ref-item water">
+        <div class="ref-name water">💧 水</div>
+        <div class="ref-nums">01,14,15,22,23,30,31,44,45</div>
+      </div>
+      <div class="ref-item fire">
+        <div class="ref-name fire">🔥 火</div>
+        <div class="ref-nums">02,03,10,11,18,19,32,33,40,41,48,49</div>
+      </div>
+      <div class="ref-item earth">
+        <div class="ref-name earth">🏔️ 土</div>
+        <div class="ref-nums">06,07,20,21,28,29,36,37</div>
+      </div>
+      <div class="ref-item red">
+        <div class="ref-name red">🔴 红波</div>
+        <div class="ref-nums">01,02,07,08,12,13,18,19,23,24,29,30,34,35,40,45,46</div>
+      </div>
+      <div class="ref-item blue">
+        <div class="ref-name blue">🔵 蓝波</div>
+        <div class="ref-nums">03,04,09,10,14,15,20,25,26,31,36,37,41,42,47,48</div>
+      </div>
+      <div class="ref-item green">
+        <div class="ref-name green">🟢 绿波</div>
+        <div class="ref-nums">05,06,11,16,17,21,22,27,28,32,33,38,39,43,44,49</div>
+      </div>
+      <div class="ref-item odd">
+        <div class="ref-name odd">📊 合数单</div>
+        <div class="ref-nums">01,03,05,07,09,10,12,14,16,18,21,23,25,27,29,30,32,34,36,38,41,43,45,47,49</div>
+      </div>
+      <div class="ref-item even">
+        <div class="ref-name even">📊 合数双</div>
+        <div class="ref-nums">02,04,06,08,11,13,15,17,19,20,22,24,26,28,31,33,35,37,39,40,42,44,46,48</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast">✅ 复制成功！</div>
+
+<script>
+// 号码属性数据
+const NUMBER_DATA = {
+  '金': [4, 5, 12, 13, 26, 27, 34, 35, 42, 43],
+  '木': [8, 9, 16, 17, 24, 25, 38, 39, 46, 47],
+  '水': [1, 14, 15, 22, 23, 30, 31, 44, 45],
+  '火': [2, 3, 10, 11, 18, 19, 32, 33, 40, 41, 48, 49],
+  '土': [6, 7, 20, 21, 28, 29, 36, 37],
+  '红波': [1, 2, 7, 8, 12, 13, 18, 19, 23, 24, 29, 30, 34, 35, 40, 45, 46],
+  '蓝波': [3, 4, 9, 10, 14, 15, 20, 25, 26, 31, 36, 37, 41, 42, 47, 48],
+  '兰波': [3, 4, 9, 10, 14, 15, 20, 25, 26, 31, 36, 37, 41, 42, 47, 48],
+  '绿波': [5, 6, 11, 16, 17, 21, 22, 27, 28, 32, 33, 38, 39, 43, 44, 49],
+  '合数单': [1, 3, 5, 7, 9, 10, 12, 14, 16, 18, 21, 23, 25, 27, 29, 30, 32, 34, 36, 38, 41, 43, 45, 47, 49],
+  '合数双': [2, 4, 6, 8, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 31, 33, 35, 37, 39, 40, 42, 44, 46, 48]
+};
+
+// 波色对应颜色
+const WAVE_COLORS = {
+  1: 'red', 2: 'red', 7: 'red', 8: 'red', 12: 'red', 13: 'red', 18: 'red', 19: 'red', 
+  23: 'red', 24: 'red', 29: 'red', 30: 'red', 34: 'red', 35: 'red', 40: 'red', 45: 'red', 46: 'red',
+  3: 'blue', 4: 'blue', 9: 'blue', 10: 'blue', 14: 'blue', 15: 'blue', 20: 'blue', 25: 'blue', 
+  26: 'blue', 31: 'blue', 36: 'blue', 37: 'blue', 41: 'blue', 42: 'blue', 47: 'blue', 48: 'blue',
+  5: 'green', 6: 'green', 11: 'green', 16: 'green', 17: 'green', 21: 'green', 22: 'green', 
+  27: 'green', 28: 'green', 32: 'green', 33: 'green', 38: 'green', 39: 'green', 43: 'green', 44: 'green', 49: 'green'
+};
+
+// 关键词颜色映射
+const KEYWORD_COLORS = {
+  '金': 'gold', '木': 'wood', '水': 'water', '火': 'fire', '土': 'earth',
+  '红波': 'red', '蓝波': 'blue', '兰波': 'blue', '绿波': 'green',
+  '合数单': 'odd', '合数双': 'even'
+};
+
+let currentResult = null;
+
+function setInput(text) {
+  document.getElementById('inputBox').value = text;
+  handleInput();
+}
+
+function handleInput() {
+  const input = document.getElementById('inputBox').value.trim();
+  const resultDiv = document.getElementById('resultContent');
+  
+  if (!input) {
+    resultDiv.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <div>在上方输入关键词，或点击快捷标签查询</div>
+      </div>`;
+    currentResult = null;
+    return;
+  }
+  
+  const result = parseInput(input);
+  
+  if (!result.found) {
+    resultDiv.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">❓</div>
+        <div>未识别到有效属性，请尝试：金、木、水、火、土、红波、蓝波、绿波、合数单、合数双</div>
+      </div>`;
+    currentResult = null;
+    return;
+  }
+  
+  currentResult = result;
+  
+  // 生成号码球HTML
+  let ballsHtml = '';
+  for (const num of result.numbers) {
+    const colorClass = 'ball-' + (WAVE_COLORS[num] || 'red');
+    ballsHtml += `<div class="num-ball ${colorClass}">${String(num).padStart(2, '0')}</div>`;
+  }
+  
+  // 生成展开指令
+  const numsStr = result.numbers.map(n => String(n).padStart(2, '0')).join('、');
+  const amount = result.amount;
+  
+  // 格式化展开指令（按波色分组或不分组）
+  let commandText = '';
+  if (amount > 0) {
+    const expanded = result.numbers.map(n => `${String(n).padStart(2, '0')}各${amount}`).join('、');
+    commandText = `${numsStr}各${amount}`;
+  } else {
+    commandText = numsStr;
+  }
+  
+  const badgeClass = KEYWORD_COLORS[result.keyword] || 'gold';
+  const amountText = amount > 0 ? `各${amount}` : '';
+  
+  resultDiv.innerHTML = `
+    <div class="expand-card">
+      <div class="expand-header">
+        <div class="expand-input">
+          ${result.keyword}${amountText}
+          <span style="color:#475569;margin:0 10px;">→</span>
+          ${numsStr}${amountText}
+        </div>
+        <div class="expand-badge badge-${badgeClass}">
+          共${result.numbers.length}个号码
+        </div>
+      </div>
+      
+      <div class="number-grid">
+        ${ballsHtml}
+      </div>
+      
+      ${amount > 0 ? `
+      <div class="expand-command">
+        <div class="command-label">📋 可复制指令（直接粘贴到统计工具使用）</div>
+        <div class="command-text" id="expandCommand">${commandText}</div>
+        <div class="command-copy">
+          <button class="btn btn-copy" style="padding:8px 16px;font-size:13px;" onclick="copyCommand()">📋 一键复制</button>
+        </div>
+      </div>
+      ` : `
+      <div class="expand-command">
+        <div class="command-label">📋 号码列表（添加金额即可使用）</div>
+        <div class="command-text">${numsStr}</div>
+      </div>
+      `}
+    </div>
+  `;
+}
+
+function parseInput(input) {
+  const keywords = Object.keys(NUMBER_DATA);
+  
+  for (const keyword of keywords) {
+    // 匹配：关键词 + 可选"各"/"号"/"各号" + 可选数字
+    const pattern = new RegExp(keyword + '\\s*(?:各|号|各号)?\\s*(\\d*)', 'i');
+    const match = input.match(pattern);
+    
+    if (match) {
+      const amount = parseInt(match[1]) || 0;
+      return {
+        found: true,
+        keyword: keyword,
+        numbers: NUMBER_DATA[keyword],
+        amount: amount,
+        originalInput: input
+      };
+    }
+  }
+  
+  return { found: false };
+}
+
+function copyCommand() {
+  if (!currentResult || currentResult.amount <= 0) return;
+  
+  const nums = currentResult.numbers.map(n => String(n).padStart(2, '0'));
+  const command = nums.join('各' + currentResult.amount + '、') + '各' + currentResult.amount;
+  
+  // 简化：直接用号码+各+金额格式
+  const simpleCommand = nums.join('、') + '各' + currentResult.amount;
+  
+  navigator.clipboard.writeText(simpleCommand).then(() => {
+    showToast('✅ 复制成功！可直接粘贴到统计工具');
+  }).catch(() => {
+    // 备用方案
+    const textarea = document.createElement('textarea');
+    textarea.value = simpleCommand;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('✅ 复制成功！');
+  });
+}
+
+function showToast(message) {
+  const toast = document.getElementById('copyToast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// 页面加载时聚焦
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('inputBox').focus();
+});
+</script>
+</body>
+</html>
