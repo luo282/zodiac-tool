@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "note": "账号密码文件。修改需 GitHub Token。本机管理员可用网页内管理功能修改。",
+    "github_api": "通过 PUT /repos/luo282/zodiac-tool/contents/accounts.json 修改"
+  },
+  "accounts": [
+    { "username": "admin", "password": "admin123", "role": "admin" },
+    { "username": "user1", "password": "123456",   "role": "user" }
+  ]
+}
