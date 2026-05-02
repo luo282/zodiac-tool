@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>测试解析</title>
+</head>
+<body>
+<h1>测试解析功能</h1>
+<input type="text" id="testInput" style="width:400px;padding:10px;font-size:16px;" value="狗兔.18 42各5">
+<button onclick="testParse()">测试解析</button>
+<div id="result" style="margin-top:20px;padding:15px;background:#f5f5f5;"></div>
+
+<script>
+const ZODIAC = {
+  1:'马', 2:'蛇', 3:'龙', 4:'兔', 5:'虎', 6:'牛', 7:'鼠', 8:'猪', 9:'狗', 10:'鸡',
+  11:'猴', 12:'羊', 13:'马', 14:'蛇', 15:'龙', 16:'兔', 17:'虎', 18:'牛', 19:'鼠', 20:'猪',
+  21:'狗', 22:'鸡', 23:'猴', 24:'羊', 25:'马', 26:'蛇', 27:'龙', 28:'兔', 29:'虎', 30:'牛',
+  31:'鼠', 32:'猪', 33:'狗', 34:'鸡', 35:'猴', 36:'羊', 37:'马', 38:'蛇', 39:'龙', 40:'兔',
+  41:'虎', 42:'牛', 43:'鼠', 44:'猪', 45:'狗', 46:'鸡', 47:'猴', 48:'羊', 49:'马'
+};
+
+const ZODIAC_NUMS = {};
+for (let n = 1; n <= 49; n++) {
+  const z = ZODIAC[n];
+  if (!ZODIAC_NUMS[z]) ZODIAC_NUMS[z] = [];
+  ZODIAC_NUMS[z].push(n);
+}
+
+const ZODIAC_NAMES = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const ZODIAC_RE = new RegExp(`[${ZODIAC_NAMES.join('')}]`, 'g');
+
+const UNIT_WORDS = /[斤元块个份条只]/g;
+const UNIT_AFTER_GE = /各号?[斤元块个份条只]/g;
+
+function parseLine(line) {
+  line = line.replace(UNIT_AFTER_GE, '各');
+  line = line.replace(UNIT_WORDS, '').trim();
+  if (!line) return [];
+
+  line = line
+    .replace(/[，。；]/g, ' ')
+    .replace(/[\.\-\/]/g, ' ');
+
+  const eachMatches = Array.from(line.matchAll(/各号?(\d+)/g));
+  if (eachMatches.length === 0) return [];
+
+  let results = [];
+  for (let i = 0; i < eachMatches.length; i++) {
+    const match = eachMatches[i];
+    const matchStart = match.index;
+    let prefixStart = 0;
+    if (i > 0) {
+      const prevMatchEnd = eachMatches[i-1].index + eachMatches[i-1][0].length;
+      prefixStart = prevMatchEnd;
+    }
+
+    let prefix = line.slice(prefixStart, matchStart).trim();
+    prefix = prefix.replace(/共\d+$/, '');
+
+    const amount = parseInt(match[1]);
+    if (amount % 5 === 0) {
+      const entries = parsePrefixAndAmount(prefix, amount);
+      results = results.concat(entries);
+    }
+  }
+
+  return results;
+}
+
+function parsePrefixAndAmount(prefix, amount) {
+  const numCounts = [];
+
+  const zodiacMatches = prefix.match(ZODIAC_RE) || [];
+  for (const z of zodiacMatches) {
+    const zNums = ZODIAC_NUMS[z] || [];
+    zNums.forEach(n => numCounts.push({ num: n, fromZodiac: true, zodiac: z }));
+  }
+
+  const withoutZodiac = prefix.replace(ZODIAC_RE, ' ');
+  const numMatches = withoutZodiac.match(/\d+/g) || [];
+  for (const p of numMatches) {
+    const n = parseInt(p.trim());
+    if (!isNaN(n) && n >= 1 && n <= 49) {
+      numCounts.push({ num: n, fromZodiac: false, zodiac: null });
+    }
+  }
+
+  return numCounts.map(item => ({
+    num: item.num,
+    amount: amount,
+    fromZodiac: item.fromZodiac ? item.zodiac : null
+  }));
+}
+
+function testParse() {
+  const input = document.getElementById('testInput').value;
+  const result = parseLine(input);
+  const resultDiv = document.getElementById('result');
+
+  let html = '<h3>解析结果:</h3>';
+  html += `<p><strong>输入:</strong> "${input}"</p>`;
+  html += `<p><strong>识别到的条目数:</strong> ${result.length}</p>`;
+  html += '<h4>详细列表:</h4>';
+  html += '<ul>';
+  result.forEach(item => {
+    html += `<li>${item.num}号: +${item.amount}${item.fromZodiac ? ' (来自' + item.fromZodiac + ')' : ''}</li>`;
+  });
+  html += '</ul>';
+
+  resultDiv.innerHTML = html;
+}
+</script>
+</body>
+</html>
