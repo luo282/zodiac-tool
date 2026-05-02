@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生肖号码累计统计 - 分析报告</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Microsoft YaHei', '微软雅黑', sans-serif; background: #0f1923; color: #e0e6f0; min-height: 100vh; }
+  
+  .header {
+    background: linear-gradient(135deg, #1a2a4a 0%, #0d3b6e 50%, #1a2a4a 100%);
+    padding: 28px 40px;
+    border-bottom: 2px solid #2563eb;
+    text-align: center;
+  }
+  .header h1 { font-size: 26px; color: #f0c040; letter-spacing: 4px; text-shadow: 0 0 20px #f0c04066; }
+  .header p { margin-top: 8px; color: #90aec8; font-size: 14px; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 30px 20px; }
+
+  /* 统计卡片 */
+  .stats-row { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat-card {
+    flex: 1; min-width: 160px;
+    background: linear-gradient(135deg, #1a2f50, #1e3a5f);
+    border: 1px solid #2563eb44;
+    border-radius: 12px; padding: 18px 20px; text-align: center;
+    box-shadow: 0 4px 20px #0008;
+  }
+  .stat-card .label { font-size: 12px; color: #7ca8d0; margin-bottom: 6px; letter-spacing: 1px; }
+  .stat-card .value { font-size: 28px; font-weight: bold; color: #f0c040; }
+  .stat-card .sub { font-size: 11px; color: #5a8ab0; margin-top: 4px; }
+
+  /* 主表格 */
+  .section-title {
+    font-size: 16px; font-weight: bold; color: #f0c040;
+    margin: 28px 0 14px; padding-left: 12px;
+    border-left: 4px solid #2563eb;
+    letter-spacing: 2px;
+  }
+  
+  .table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 4px 24px #0008; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: #0d3b6e; color: #a8d4f8;
+    padding: 10px 8px; text-align: center; white-space: nowrap;
+    border: 1px solid #1e4d80;
+    font-size: 12px; letter-spacing: 1px;
+  }
+  thead th.num-col { background: #1a3a6a; color: #f0c040; font-size: 14px; }
+  tbody tr:nth-child(even) { background: #111d2e; }
+  tbody tr:nth-child(odd) { background: #0e1929; }
+  tbody tr:hover { background: #1a2f50; transition: background .2s; }
+  tbody td { padding: 8px 10px; text-align: center; border: 1px solid #1e3050; }
+  .num-cell { font-weight: bold; font-size: 15px; color: #7dd3fc; }
+  .zodiac-cell { font-size: 16px; }
+  .amount-cell { font-weight: bold; }
+  .amount-high { color: #f97316; font-size: 15px; }
+  .amount-mid  { color: #fbbf24; }
+  .amount-low  { color: #6ee7b7; }
+  .amount-zero { color: #334155; }
+  .total-row td { background: #1a3a6a !important; color: #f0c040; font-weight: bold; font-size: 14px; border-top: 2px solid #2563eb; }
+
+  /* 进度条 */
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #2563eb, #f0c040); min-width: 2px; transition: width .4s; }
+
+  /* 生肖色块 */
+  .z-鼠{color:#c084fc;}.z-牛{color:#67e8f9;}.z-虎{color:#fb923c;}
+  .z-兔{color:#86efac;}.z-龙{color:#f87171;}.z-蛇{color:#34d399;}
+  .z-马{color:#fde68a;}.z-羊{color:#d8b4fe;}.z-猴{color:#93c5fd;}
+  .z-鸡{color:#fcd34d;}.z-狗{color:#fdba74;}.z-猪{color:#a3e635;}
+
+  /* 生肖汇总卡 */
+  .zodiac-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 28px; }
+  @media(max-width:900px){ .zodiac-grid { grid-template-columns: repeat(3,1fr); } }
+  .zodiac-card {
+    background: #1a2f50; border: 1px solid #2563eb33; border-radius: 10px;
+    padding: 14px; text-align: center;
+  }
+  .zodiac-card .z-name { font-size: 22px; margin-bottom: 6px; }
+  .zodiac-card .z-total { font-size: 20px; font-weight: bold; color: #f0c040; }
+  .zodiac-card .z-nums { font-size: 11px; color: #6b8aaa; margin-top: 4px; }
+
+  .tip-box {
+    background: #0d2340; border: 1px solid #2563eb55;
+    border-radius: 10px; padding: 18px 22px; margin-bottom: 24px;
+    font-size: 13px; line-height: 2;
+  }
+  .tip-box h3 { color: #f0c040; margin-bottom: 10px; }
+  .tip-box code { background: #1a3a6a; color: #7dd3fc; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎯 生肖号码累计统计表</h1>
+  <p>自动解析 · 智能累加 · 实时汇总</p>
+</div>
+
+<div class="container">
+
+  <!-- 统计卡片 -->
+  <div class="stats-row" id="stats-row"></div>
+
+  <!-- 使用说明 -->
+  <div class="tip-box">
+    <h3>📋 Excel使用说明</h3>
+    <div>✅ 文件已保存到桌面：<strong>完整生肖统计表格_累计版.xlsx</strong></div>
+    <div>✅ <strong>C列（当前金额）</strong>：已自动填入本次解析的所有金额</div>
+    <div>✅ <strong>D~AC列（第1~30次输入）</strong>：下次有新数据时依次填入，<strong>AI列自动累加</strong></div>
+    <div>✅ 支持格式：<code>03.15.20各30</code> <code>07/22/44各50</code> <code>08 16 24各号20</code></div>
+    <div>✅ 前导零自动识别：<code>03</code>→3号，<code>09</code>→9号；金额必须为5的倍数</div>
+  </div>
+
+  <!-- 生肖汇总 -->
+  <div class="section-title">🐾 十二生肖汇总</div>
+  <div class="zodiac-grid" id="zodiac-grid"></div>
+
+  <!-- 主统计表 -->
+  <div class="section-title">📊 1~49号详细统计</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="num-col">号数</th>
+          <th>生肖</th>
+          <th>累计金额</th>
+          <th colspan="2">金额分布</th>
+        </tr>
+      </thead>
+      <tbody id="main-tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// 数据
+const ZODIAC = {1:'鼠',2:'牛',3:'虎',4:'兔',5:'龙',6:'蛇',7:'马',8:'羊',9:'猴',10:'鸡',11:'狗',12:'猪',13:'鼠',14:'牛',15:'虎',16:'兔',17:'龙',18:'蛇',19:'马',20:'羊',21:'猴',22:'鸡',23:'狗',24:'猪',25:'鼠',26:'牛',27:'虎',28:'兔',29:'龙',30:'蛇',31:'马',32:'羊',33:'猴',34:'鸡',35:'狗',36:'猪',37:'鼠',38:'牛',39:'虎',40:'兔',41:'龙',42:'蛇',43:'马',44:'羊',45:'猴',46:'鸡',47:'狗',48:'猪',49:'鼠'};
+
+const TOTALS = {"1":0,"2":10,"3":120,"4":40,"5":50,"6":100,"7":90,"8":110,"9":10,"10":10,"11":25,"12":20,"13":50,"14":50,"15":70,"16":80,"17":30,"18":65,"19":30,"20":140,"21":70,"22":70,"23":20,"24":0,"25":30,"26":10,"27":65,"28":40,"29":80,"30":70,"31":30,"32":25,"33":5,"34":20,"35":40,"36":50,"37":60,"38":10,"39":30,"40":5,"41":45,"42":30,"43":45,"44":170,"45":50,"46":30,"47":60,"48":40,"49":15};
+
+const maxVal = Math.max(...Object.values(TOTALS));
+const totalSum = Object.values(TOTALS).reduce((a,b)=>a+b, 0);
+const activeCount = Object.values(TOTALS).filter(v=>v>0).length;
+
+// 统计卡片
+const statsData = [
+  {label:'总金额', value: totalSum.toLocaleString(), sub:'所有号数累计'},
+  {label:'有效号数', value: activeCount, sub:'金额>0的号数'},
+  {label:'最高金额', value: maxVal, sub:'44号 · 羊'},
+  {label:'平均金额', value: Math.round(totalSum/activeCount), sub:'有效号数平均'},
+  {label:'号数总量', value: 49, sub:'1~49号全覆盖'},
+];
+const statsRow = document.getElementById('stats-row');
+statsData.forEach(d => {
+  statsRow.innerHTML += `<div class="stat-card"><div class="label">${d.label}</div><div class="value">${d.value}</div><div class="sub">${d.sub}</div></div>`;
+});
+
+// 生肖汇总
+const zodiacTotals = {};
+const zodiacNums = {};
+for(let i=1;i<=49;i++){
+  const z = ZODIAC[i];
+  zodiacTotals[z] = (zodiacTotals[z]||0) + (TOTALS[i]||0);
+  if(!zodiacNums[z]) zodiacNums[z] = [];
+  zodiacNums[z].push(i);
+}
+const zodiacOrder = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const zodiacGrid = document.getElementById('zodiac-grid');
+zodiacOrder.forEach(z => {
+  const total = zodiacTotals[z] || 0;
+  const nums = zodiacNums[z] || [];
+  zodiacGrid.innerHTML += `
+    <div class="zodiac-card">
+      <div class="z-name z-${z}">${z}</div>
+      <div class="z-total">${total > 0 ? total : '-'}</div>
+      <div class="z-nums">${nums.join('·')}</div>
+    </div>`;
+});
+
+// 主表格
+const tbody = document.getElementById('main-tbody');
+for(let i=1;i<=49;i++){
+  const val = TOTALS[i] || 0;
+  const z = ZODIAC[i];
+  const pct = maxVal > 0 ? Math.round(val/maxVal*100) : 0;
+  let amtClass = 'amount-zero';
+  if(val >= 100) amtClass = 'amount-high';
+  else if(val >= 50) amtClass = 'amount-mid';
+  else if(val > 0) amtClass = 'amount-low';
+
+  tbody.innerHTML += `
+    <tr>
+      <td class="num-cell">${String(i).padStart(2,'0')}</td>
+      <td class="zodiac-cell z-${z}">${z}</td>
+      <td class="${amtClass}" style="font-size:15px;font-weight:bold">${val > 0 ? val : '—'}</td>
+      <td style="width:200px;padding:8px 14px;">
+        <div class="bar-wrap">
+          <div class="bar" style="width:${pct*1.8}px;opacity:${val>0?1:0.1}"></div>
+          <span style="font-size:11px;color:#5a8ab0">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+}
+
+// 总计行
+tbody.innerHTML += `
+  <tr class="total-row">
+    <td colspan="2">总  计</td>
+    <td>${totalSum.toLocaleString()}</td>
+    <td>覆盖 ${activeCount}/49 个号数</td>
+  </tr>`;
+</script>
+</body>
+</html>
