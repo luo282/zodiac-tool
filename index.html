@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>动物号码实时累计工具 v3.0</title>
+<!-- 登录保护样式 -->
+<style id="auth-lock-style">
+#auth-lock-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:#0d1b2a;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#auth-lock-overlay .lock-icon{font-size:48px;animation:pulse 2s infinite;}
+#auth-lock-overlay .lock-text{color:#7ca8d0;font-size:14px;letter-spacing:1px;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+body.auth-locked{overflow:hidden;}
+</style>
+<script src="auth.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Microsoft YaHei','微软雅黑',sans-serif;background:#0d1b2a;color:#e0e6f0;min-height:100vh;}
@@ -403,7 +412,12 @@ td{padding:8px 6px;text-align:center;border:1px solid #1a2e45;}
 }
 </style>
 </head>
-<body>
+<body class="auth-locked">
+<!-- 登录遮罩层 -->
+<div id="auth-lock-overlay">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-text">正在验证登录状态...</div>
+</div>
 
 <!-- 顶部 -->
 <div class="header">
@@ -415,6 +429,8 @@ td{padding:8px 6px;text-align:center;border:1px solid #1a2e45;}
     <button class="btn btn-import" onclick="openBatchModal()">📋 批量导入</button>
     <button class="btn btn-export" onclick="exportExcel()">⬇ 导出 Excel</button>
     <button class="btn btn-clear" onclick="confirmClear()">🗑 清空数据</button>
+    <button class="btn" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;" id="authManageBtn" onclick="openAuthManager()" title="管理账号（需本机Token）">👤 账号管理</button>
+    <button class="btn" style="background:linear-gradient(135deg,#374151,#4b5563);color:#fff;" onclick="doLogout()">🚪 退出</button>
   </div>
 </div>
 
@@ -2431,6 +2447,270 @@ document.head.appendChild(style);
 // =============================================
 initData();
 buildTable();
+</script>
+
+<!-- ===== 登录保护 & 账号管理 ===== -->
+<style>
+/* 账号管理弹窗 */
+#authMgrOverlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:99998;align-items:center;justify-content:center;}
+#authMgrOverlay.show{display:flex;}
+#authMgrBox{background:#0e1f35;border:1px solid #1e3a60;border-radius:16px;padding:28px;width:520px;max-width:92vw;max-height:85vh;overflow-y:auto;}
+#authMgrBox h3{color:#f0c040;font-size:16px;margin-bottom:16px;letter-spacing:1px;}
+.auth-mgr-token{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e3a60;}
+.auth-mgr-token p{font-size:11px;color:#5a7a9a;margin-bottom:6px;}
+.auth-mgr-token-row{display:flex;gap:6px;}
+.auth-mgr-token-row input{flex:1;padding:8px 12px;background:#0a1628;border:1px solid #1e3a60;border-radius:8px;color:#e0e6f0;font-size:12px;font-family:inherit;outline:none;}
+.auth-mgr-token-row button{padding:8px 14px;border:none;border-radius:8px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap;}
+.auth-mgr-token-row .t-save{background:#059669;}.auth-mgr-token-row .t-save:hover{background:#047857;}
+.auth-mgr-token-row .t-del{background:#dc2626;}.auth-mgr-token-row .t-del:hover{background:#b91c1c;}
+.auth-token-st{font-size:11px;margin-top:6px;}
+.auth-token-st.ok{color:#10b981;}.auth-token-st.no{color:#ef4444;}
+.auth-acct-list{margin:12px 0;}
+.auth-acct-item{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:5px;background:#0a1628;border:1px solid #1e3a60;border-radius:8px;font-size:12px;}
+.auth-acct-item .an{color:#f0c040;font-weight:bold;min-width:60px;}
+.auth-acct-item .ar{background:#1e3a60;color:#7ca8d0;padding:2px 8px;border-radius:4px;font-size:10px;}
+.auth-acct-item .ap{color:#5a7a9a;flex:1;}
+.auth-acct-item button{padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;color:#fff;}
+.auth-acct-item .ab-pw{background:#7c3aed;}.auth-acct-item .ab-pw:hover{background:#6d28d9;}
+.auth-acct-item .ab-dl{background:#dc2626;}.auth-acct-item .ab-dl:hover{background:#b91c1c;}
+.auth-add-form{margin-top:12px;padding:10px;background:#0a1628;border:1px dashed #1e3a60;border-radius:8px;}
+.auth-add-form h4{font-size:12px;color:#7ca8d0;margin-bottom:8px;}
+.auth-add-row{display:flex;gap:6px;margin-bottom:6px;}
+.auth-add-row input,.auth-add-row select{padding:6px 10px;background:#0d1b2a;border:1px solid #1e3a60;border-radius:6px;color:#e0e6f0;font-size:12px;font-family:inherit;outline:none;}
+.auth-add-row input{flex:1;}.auth-add-row select{min-width:70px;}
+.auth-add-submit{padding:6px 16px;border:none;border-radius:6px;background:#059669;color:#fff;font-size:12px;cursor:pointer;width:100%;}
+.auth-add-submit:hover{background:#047857;}
+#authMgrBox .close-btn{display:block;margin:16px auto 0;padding:10px 40px;border:none;border-radius:8px;background:#374151;color:#fff;font-size:13px;cursor:pointer;}
+#authMgrBox .close-btn:hover{background:#4b5563;}
+/* 改密弹窗（复用login样式） */
+#authPwOverlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;}
+#authPwOverlay.show{display:flex;}
+#authPwBox{background:#0e1f35;border:1px solid #1e3a60;border-radius:16px;padding:28px;width:360px;max-width:90vw;}
+#authPwBox h3{color:#f0c040;font-size:15px;margin-bottom:16px;}
+#authPwBox .form-group{margin-bottom:12px;}
+#authPwBox label{display:block;font-size:12px;color:#7ca8d0;margin-bottom:4px;}
+#authPwBox input{width:100%;padding:8px 12px;background:#0a1628;border:1px solid #1e3a60;border-radius:8px;color:#e0e6f0;font-size:13px;font-family:inherit;outline:none;}
+#authPwBox .auth-modal-btns{display:flex;gap:8px;margin-top:14px;}
+#authPwBox .auth-modal-btns button{flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;cursor:pointer;color:#fff;font-weight:bold;}
+#authPwBox .auth-modal-btns .am-confirm{background:#2563eb;}
+#authPwBox .auth-modal-btns .am-confirm:hover{background:#1d4ed8;}
+#authPwBox .auth-modal-btns .am-cancel{background:#374151;}
+#authPwBox .auth-modal-btns .am-cancel:hover{background:#4b5563;}
+#authPwBox .auth-pw-msg{text-align:center;font-size:12px;min-height:18px;margin-top:6px;}
+#authPwBox .auth-pw-msg.error{color:#ef4444;}
+#authPwBox .auth-pw-msg.success{color:#10b981;}
+.auth-user-badge{font-size:11px;color:#7ca8d0;margin-left:6px;}
+</style>
+
+<!-- 账号管理弹窗 -->
+<div id="authMgrOverlay">
+  <div id="authMgrBox">
+    <h3>👥 账号管理</h3>
+    <div class="auth-mgr-token">
+      <p>配置 GitHub Token 后可管理账号。Token 仅存在本机浏览器，其他人无法操作。</p>
+      <div class="auth-mgr-token-row">
+        <input type="password" id="mgrTokenInput" placeholder="粘贴 GitHub Token">
+        <button class="t-save" onclick="mgrSaveToken()">保存</button>
+        <button class="t-del" onclick="mgrRemoveToken()">清除</button>
+      </div>
+      <div class="auth-token-st" id="mgrTokenSt"></div>
+    </div>
+    <div id="mgrAcctArea" style="display:none;">
+      <div class="auth-acct-list" id="mgrAcctList"></div>
+      <div class="auth-add-form">
+        <h4>➕ 添加新账号</h4>
+        <div class="auth-add-row">
+          <input id="mgrNewUser" placeholder="账号名">
+          <input id="mgrNewPass" type="password" placeholder="密码">
+          <select id="mgrNewRole"><option value="user">用户</option><option value="admin">管理员</option></select>
+        </div>
+        <button class="auth-add-submit" onclick="mgrAddAccount()">添加账号</button>
+      </div>
+    </div>
+    <button class="close-btn" onclick="closeAuthManager()">关闭</button>
+  </div>
+</div>
+
+<!-- 改密弹窗 -->
+<div id="authPwOverlay">
+  <div id="authPwBox">
+    <h3>✏️ 修改密码</h3>
+    <div class="form-group"><label>账号</label><input type="text" id="authPwUser" readonly style="opacity:0.6;"></div>
+    <div class="form-group"><label>新密码</label><input type="text" id="authPwNew" placeholder="输入新密码"></div>
+    <div class="form-group"><label>确认密码</label><input type="text" id="authPwConfirm" placeholder="再次输入新密码"></div>
+    <div class="auth-pw-msg" id="authPwMsg"></div>
+    <div class="auth-modal-btns">
+      <button class="am-confirm" onclick="mgrChangePw()">确认修改</button>
+      <button class="am-cancel" onclick="closeAuthPwModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 登录保护 =====
+(function(){
+  // 显示遮罩
+  document.body.classList.add('auth-locked');
+  const overlay = document.getElementById('auth-lock-overlay');
+  const lockStyle = document.getElementById('auth-lock-style');
+
+  if (!Auth.isLoggedIn()) {
+    // 未登录 → 跳转登录页
+    window.location.replace('login.html');
+    return;
+  }
+
+  // 已登录 → 移除遮罩
+  document.body.classList.remove('auth-locked');
+  if (overlay) overlay.remove();
+  if (lockStyle) lockStyle.remove();
+
+  // 显示当前用户
+  const user = Auth.currentUser();
+  if (user) {
+    // 在标题旁显示用户名
+    const h1 = document.querySelector('.header h1');
+    if (h1) {
+      const badge = document.createElement('span');
+      badge.className = 'auth-user-badge';
+      badge.textContent = '👤 ' + user.username;
+      h1.appendChild(badge);
+    }
+    // 如果没有 Token，隐藏管理按钮
+    if (!Auth.hasToken()) {
+      const mb = document.getElementById('authManageBtn');
+      if (mb) mb.style.display = 'none';
+    }
+  }
+})();
+
+// ===== 退出登录 =====
+function doLogout() {
+  if (!confirm('确认退出登录？')) return;
+  Auth.logout();
+  window.location.replace('login.html');
+}
+
+// ===== 账号管理弹窗 =====
+function openAuthManager() {
+  document.getElementById('authMgrOverlay').classList.add('show');
+  mgrCheckToken();
+}
+function closeAuthManager() {
+  document.getElementById('authMgrOverlay').classList.remove('show');
+}
+
+async function mgrCheckToken() {
+  const st = document.getElementById('mgrTokenSt');
+  const area = document.getElementById('mgrAcctArea');
+  if (!Auth.hasToken()) {
+    st.className = 'auth-token-st no';
+    st.textContent = '❌ 未配置 Token，无法管理账号';
+    area.style.display = 'none';
+    return;
+  }
+  st.textContent = '⏳ 验证 Token...';
+  st.className = 'auth-token-st';
+  try {
+    const r = await Auth.verifyToken();
+    if (r.ok) {
+      st.className = 'auth-token-st ok';
+      st.textContent = '✅ Token 有效 (用户: ' + r.username + ')';
+      area.style.display = 'block';
+      mgrLoadList();
+    } else {
+      st.className = 'auth-token-st no';
+      st.textContent = '❌ Token 无效: ' + r.msg;
+      area.style.display = 'none';
+    }
+  } catch(e) {
+    st.className = 'auth-token-st no';
+    st.textContent = '❌ ' + e.message;
+    area.style.display = 'none';
+  }
+}
+
+async function mgrSaveToken() {
+  const t = document.getElementById('mgrTokenInput').value.trim();
+  if (!t) { alert('请粘贴 Token'); return; }
+  Auth.configureToken(t);
+  document.getElementById('mgrTokenInput').value = '';
+  // 显示管理按钮
+  const mb = document.getElementById('authManageBtn');
+  if (mb) mb.style.display = '';
+  await mgrCheckToken();
+}
+function mgrRemoveToken() {
+  if (!confirm('确认清除 Token？')) return;
+  Auth.clearToken();
+  const mb = document.getElementById('authManageBtn');
+  if (mb) mb.style.display = 'none';
+  mgrCheckToken();
+}
+
+async function mgrLoadList() {
+  const el = document.getElementById('mgrAcctList');
+  el.innerHTML = '<div style="color:#5a7a9a;font-size:11px;text-align:center;padding:8px;">加载中...</div>';
+  try {
+    const accts = await Auth.listAccounts();
+    el.innerHTML = '';
+    accts.forEach(a => {
+      const d = document.createElement('div');
+      d.className = 'auth-acct-item';
+      d.innerHTML = '<span class="an">'+a.username+'</span><span class="ar">'+(a.role==='admin'?'管理员':'用户')+'</span><span class="ap">****</span><button class="ab-pw" onclick="openAuthPwModal(\''+a.username+'\')">改密</button>'+(a.username!=='admin'?'<button class="ab-dl" onclick="mgrDeleteAccount(\''+a.username+'\')">删除</button>':'');
+      el.appendChild(d);
+    });
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ef4444;font-size:11px;">'+e.message+'</div>';
+  }
+}
+
+async function mgrAddAccount() {
+  const u = document.getElementById('mgrNewUser').value.trim();
+  const p = document.getElementById('mgrNewPass').value;
+  const r = document.getElementById('mgrNewRole').value;
+  if (!u||!p) { alert('请填写账号和密码'); return; }
+  try {
+    const res = await Auth.addAccount(u,p,r);
+    alert(res.msg);
+    document.getElementById('mgrNewUser').value='';
+    document.getElementById('mgrNewPass').value='';
+    mgrLoadList();
+  } catch(e) { alert('添加失败: '+e.message); }
+}
+
+async function mgrDeleteAccount(u) {
+  if (!confirm('确认删除账号 "'+u+'"？')) return;
+  try {
+    const res = await Auth.deleteAccount(u);
+    alert(res.msg);
+    mgrLoadList();
+  } catch(e) { alert('删除失败: '+e.message); }
+}
+
+function openAuthPwModal(u) {
+  document.getElementById('authPwUser').value = u;
+  document.getElementById('authPwNew').value = '';
+  document.getElementById('authPwConfirm').value = '';
+  document.getElementById('authPwMsg').textContent = '';
+  document.getElementById('authPwOverlay').classList.add('show');
+}
+function closeAuthPwModal() {
+  document.getElementById('authPwOverlay').classList.remove('show');
+}
+async function mgrChangePw() {
+  const u = document.getElementById('authPwUser').value;
+  const p1 = document.getElementById('authPwNew').value;
+  const p2 = document.getElementById('authPwConfirm').value;
+  const msg = document.getElementById('authPwMsg');
+  if (!p1) { msg.textContent='请输入新密码'; msg.className='auth-pw-msg error'; return; }
+  if (p1!==p2) { msg.textContent='两次密码不一致'; msg.className='auth-pw-msg error'; return; }
+  try {
+    const res = await Auth.changePassword(u,p1);
+    msg.textContent = res.msg; msg.className='auth-pw-msg success';
+    setTimeout(()=>{ closeAuthPwModal(); mgrLoadList(); },1000);
+  } catch(e) { msg.textContent=e.message; msg.className='auth-pw-msg error'; }
+}
 </script>
 </body>
 </html>
